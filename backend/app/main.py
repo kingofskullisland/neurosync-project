@@ -8,6 +8,8 @@ from pydantic import BaseModel
 from typing import Optional
 import json
 import logging
+import httpx
+import os
 
 from .core.config import settings
 from .core.router import router as ai_router, RouteTarget
@@ -75,20 +77,47 @@ class HealthResponse(BaseModel):
 # REST ENDPOINTS
 # =============================================================================
 
-@app.get("/health", response_model=HealthResponse)
+@app.get("/health")
 async def health():
     """Health check with backend status"""
-    backends = await ai_router.check_backends()
+    ollama_url = os.getenv("OLLAMA_BASE_URL", settings.OLLAMA_URL)
+    ollama_status = "offline"
     
-    # Convert boolean to status strings for mobile app compatibility
-    ollama_status = 'connected' if backends.get('ollama', False) else 'unreachable'
+    try:
+        # Ping /api/tags because it's lightweight and proves Ollama is up
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            resp = await client.get(f"{ollama_url}/api/tags")
+            if resp.status_code == 200:
+                ollama_status = "online"
+    except:
+        pass  # Status remains offline
+
+    return {
+        "bridge": "online",
+        "ollama": ollama_status
+    }
+
+
+@app.get("/models")
+async def list_models():
+    """List available Ollama models"""
+    ollama_url = os.getenv("OLLAMA_BASE_URL", settings.OLLAMA_URL)
     
-    return HealthResponse(
-        status="online",
-        system="NEUROSYNC_ROUTER",
-        backends=backends,
-        ollama=ollama_status,  # Direct field for mobile app
-    )
+    try:
+        async with httpx.AsyncClient() as client:
+            # CRITICAL FIX: Ollama uses /api/tags, not /models
+            response = await client.get(f"{ollama_url}/api/tags")
+            
+            if response.status_code == 200:
+                data = response.json()
+                # Extract just the model names for the UI
+                model_names = [m["name"] for m in data.get("models", [])]
+                return {"models": model_names}
+            else:
+                return {"error": f"Ollama returned {response.status_code}"}
+                
+    except Exception as e:
+        return {"error": str(e)}
 
 
 
