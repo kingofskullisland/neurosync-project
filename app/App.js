@@ -81,33 +81,22 @@ export default function App() {
     let finalResponse = null;
 
     try {
-      // TIER 1: LIGHTWEIGHT (Phone CPU)
-      setTier('Tier 1: Neural (Local)');
-      // Requires mobile_bridge.py running on phone
-      const res1 = await fetchWithTimeout("http://127.0.0.1:8080/completion", {
+      // TIER 1-2: LOCAL + ROUTER (NeuroSync Backend on port 8082)
+      setTier('Local AI Processing...');
+
+      const res = await fetchWithTimeout("http://127.0.0.1:8082/chat", {
         method: 'POST',
-        body: JSON.stringify({ prompt: `User: ${prompt}\nAssistant:`, n_predict: 128 }),
+        body: JSON.stringify({ prompt }),
         headers: { 'Content-Type': 'application/json' },
-        timeout: 5000
+        timeout: 30000 // 30s for local processing
       }).catch(() => null);
 
-      let localContent = res1 ? (await res1.json()).content : "";
-
-      // ESCALATION LOGIC
-      // If prompt implies system action -> Tier 2
-      if (/install|setup|shell|command/i.test(prompt)) {
-        setTier('Tier 2: Automation (Local)');
-        // Mobile bridge runs on 8082 (8081 is used by Metro/Expo). Ensure
-        // `mobile_bridge.py` is started and listening on this port.
-        await fetchWithTimeout("http://127.0.0.1:8082", {
-          method: 'POST',
-          body: JSON.stringify({ action: "execute_command", command: prompt }),
-          timeout: 10000 // Give commands a bit more time
-        }).catch(() => { });
-      }
-
-      // If prompt is complex/code/essay -> Tier 3 (PC)
-      if (!localContent || prompt.length > 50 || /code|write|why|how|explain/i.test(prompt) || battery < 0.2) {
+      if (res && res.ok) {
+        const data = await res.json();
+        finalResponse = data.response;
+        setTier(`${data.persona} | ${data.route} | Complexity: ${data.complexity.toFixed(3)}`);
+      } else {
+        // TIER 3: FALLBACK TO PC/CLOUD (if local fails)
         setTier('Tier 3: Nexus (PC/Cloud)');
         const res3 = await fetchWithTimeout(`http://${vpnIP}:5000/process`, {
           method: 'POST',
@@ -117,14 +106,12 @@ export default function App() {
         });
         const data3 = await res3.json();
         finalResponse = data3.response;
-      } else {
-        finalResponse = localContent;
       }
     } catch (e) {
       if (e.name === 'AbortError') {
         finalResponse = "Connection Timed Out. Target system unresponsive.";
       } else {
-        finalResponse = "Connection Error. Check PC VPN or Local Bridge.";
+        finalResponse = "Connection Error. Check Local Bridge or PC VPN.";
       }
     }
 

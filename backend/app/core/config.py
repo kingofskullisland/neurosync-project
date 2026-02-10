@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     
     # Ollama (Local)
     OLLAMA_URL: str = "http://localhost:11435"
-    OLLAMA_MODEL: str = "llama3:8b"
+    OLLAMA_MODEL: str = "llama3.2:latest"
     OLLAMA_TIMEOUT: int = 120
     
     # Gemini
