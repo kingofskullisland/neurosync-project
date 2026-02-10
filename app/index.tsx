@@ -1,375 +1,260 @@
+/**
+ * Von Agent - Neural Link (Chat Screen)
+ */
+import * as Battery from 'expo-battery';
+import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
-import { API_URL } from '../config';
+import { ChatBubble } from '../components/ChatBubble';
+import { GlitchText } from '../components/GlitchText';
+import { StatusPill } from '../components/StatusPill';
+import { checkHealth, NetworkError, sendChat } from '../lib/api';
+import { routeQuery, RouteTarget } from '../lib/router';
+import { AppSettings, loadSettings } from '../lib/storage';
 
-const { width } = Dimensions.get('window');
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  route?: RouteTarget;
+  timestamp: number;
+}
 
-export default function App() {
-  const [messages, setMessages] = useState([]);
-  const [inputText, setInputText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [status, setStatus] = useState('Idle');
-  const [currentTier, setCurrentTier] = useState('');
-  const scrollViewRef = useRef();
+export default function ChatScreen() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [battery, setBattery] = useState(100);
+  const [bridgeOnline, setBridgeOnline] = useState(false);
+  const [ollamaOnline, setOllamaOnline] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Test connection on mount
+  const scrollRef = useRef<ScrollView>(null);
+  const scanlineAnim = useRef(new Animated.Value(0)).current;
+
+  // Scanline animation
   useEffect(() => {
-    testConnection();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scanlineAnim, { toValue: 1, duration: 3000, useNativeDriver: true }),
+        Animated.timing(scanlineAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ])
+    ).start();
   }, []);
 
-  const testConnection = async () => {
-    try {
-      const response = await fetch(`${API_URL}/health`);
-      if (response.ok) {
-        const data = await response.json();
-        setStatus('Connected ✓');
-        console.log('Health check:', data);
-      } else {
-        setStatus('Server offline ✗');
-      }
-    } catch (error) {
-      setStatus('Connection failed ✗');
-      console.error('Connection error:', error);
+  // Load settings and check status
+  useEffect(() => {
+    init();
+    const interval = setInterval(checkStatus, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const init = async () => {
+    const s = await loadSettings();
+    setSettings(s);
+
+    const level = await Battery.getBatteryLevelAsync();
+    setBattery(Math.round(level * 100));
+
+    if (s.pcIp || s.vpnIp) {
+      await checkStatus(s);
     }
   };
 
-  const sendMessage = async () => {
-    if (!inputText.trim() || isLoading) return;
+  const checkStatus = async (s?: AppSettings) => {
+    const cfg = s || settings;
+    if (!cfg) return;
 
-    const userMessage = {
-      id: Date.now(),
+    const ip = cfg.vpnIp || cfg.pcIp;
+    if (!ip) return;
+
+    try {
+      const health = await checkHealth(ip);
+      setBridgeOnline(health.status === 'online');
+      setOllamaOnline(health.ollama === 'connected');
+    } catch {
+      setBridgeOnline(false);
+      setOllamaOnline(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || loading || !settings) return;
+
+    const ip = settings.vpnIp || settings.pcIp;
+    if (!ip) {
+      setError('Configure server IP in settings');
+      return;
+    }
+
+    const userMsg: Message = {
+      id: Date.now().toString(),
       role: 'user',
-      content: inputText.trim(),
-      timestamp: new Date().toLocaleTimeString()
+      content: input.trim(),
+      timestamp: Date.now(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    setInputText('');
-    setIsLoading(true);
-    setStatus('Processing...');
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setLoading(true);
+    setError(null);
+
+    // Get route decision
+    const decision = routeQuery(userMsg.content, settings, {
+      battery,
+      localOnline: ollamaOnline,
+      pcOnline: bridgeOnline,
+    });
 
     try {
-      const response = await fetch(`${API_URL}/process`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: userMessage.content,
-          temperature: 0.7,
-          max_tokens: 2048
-        })
-      });
+      const response = await sendChat(ip, userMsg.content, settings.selectedModel);
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      const aiMessage = {
-        id: Date.now() + 1,
+      const aiMsg: Message = {
+        id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.response,
-        tier: data.tier_used,
-        model: data.model,
-        processingTime: data.processing_time,
-        timestamp: new Date().toLocaleTimeString()
+        content: response.response,
+        route: decision.target,
+        timestamp: Date.now(),
       };
 
-      setMessages(prev => [...prev, aiMessage]);
-      setCurrentTier(data.tier_used);
-      setStatus(`${data.tier_used} (${data.processing_time.toFixed(2)}s)`);
-
-    } catch (error) {
-      const errorMessage = {
-        id: Date.now() + 1,
-        role: 'error',
-        content: `Error: ${error.message}`,
-        timestamp: new Date().toLocaleTimeString()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-      setStatus('Error ✗');
+      setMessages(prev => [...prev, aiMsg]);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    } catch (err) {
+      if (err instanceof NetworkError) {
+        setError(err.message);
+      } else {
+        setError('Failed to get response');
+      }
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  };
-
-  const clearChat = () => {
-    setMessages([]);
-    setStatus('Cleared');
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
+    <KeyboardAvoidingView
+      className="flex-1 bg-cyber-bg"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
+      {/* Scanline */}
+      <Animated.View
+        className="absolute left-0 right-0 h-0.5 bg-neon-cyan/10 z-10"
+        style={{
+          transform: [{
+            translateY: scanlineAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 800] })
+          }]
+        }}
+      />
+
       {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>VON AGENT</Text>
-          <Text style={styles.status}>{status}</Text>
+      <View className="pt-12 pb-4 px-4 border-b border-cyber-border">
+        <View className="flex-row justify-between items-center">
+          <GlitchText text="VON.AGENT" size="md" />
+          <TouchableOpacity onPress={() => router.push('/settings')} className="p-2">
+            <Text className="text-2xl">⚙️</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={clearChat} style={styles.clearButton}>
-          <Text style={styles.clearButtonText}>Clear</Text>
-        </TouchableOpacity>
+
+        {/* Status Pills */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3 -mx-1">
+          <View className="flex-row gap-2 px-1">
+            <StatusPill
+              label="Local"
+              status={ollamaOnline ? 'online' : 'offline'}
+            />
+            <StatusPill
+              label="Bridge"
+              status={bridgeOnline ? 'online' : 'offline'}
+            />
+            <StatusPill
+              label="Battery"
+              status={battery > 20 ? 'online' : 'warning'}
+              value={`${battery}%`}
+            />
+          </View>
+        </ScrollView>
       </View>
 
+      {/* Error Banner */}
+      {error && (
+        <View className="bg-red-500/20 border-b border-red-500 px-4 py-3">
+          <Text className="text-red-400 text-sm font-mono text-center">{error}</Text>
+        </View>
+      )}
+
       {/* Messages */}
-      <ScrollView 
-        ref={scrollViewRef}
-        style={styles.messagesContainer}
-        contentContainerStyle={styles.messagesContent}
-        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+      <ScrollView
+        ref={scrollRef}
+        className="flex-1 px-4"
+        contentContainerStyle={{ paddingVertical: 16 }}
+        keyboardShouldPersistTaps="handled"
       >
-        {messages.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🤖</Text>
-            <Text style={styles.emptyText}>Start a conversation</Text>
-            <Text style={styles.emptyHint}>3-Tier AI routing active</Text>
+        {messages.length === 0 ? (
+          <View className="flex-1 items-center justify-center py-20">
+            <Text className="text-6xl mb-4">🤖</Text>
+            <Text className="text-neon-cyan text-lg font-mono font-bold">NEURAL LINK READY</Text>
+            <Text className="text-slate-500 text-sm mt-2 text-center px-8">
+              {bridgeOnline
+                ? 'Send a message to begin'
+                : 'Configure connection in settings'}
+            </Text>
           </View>
+        ) : (
+          messages.map(msg => (
+            <ChatBubble
+              key={msg.id}
+              role={msg.role}
+              content={msg.content}
+              route={msg.route}
+              timestamp={msg.timestamp}
+            />
+          ))
         )}
 
-        {messages.map((msg) => (
-          <View 
-            key={msg.id} 
-            style={[
-              styles.messageBubble,
-              msg.role === 'user' && styles.userBubble,
-              msg.role === 'assistant' && styles.aiBubble,
-              msg.role === 'error' && styles.errorBubble
-            ]}
-          >
-            <Text style={styles.messageText}>{msg.content}</Text>
-            
-            {msg.tier && (
-              <View style={styles.metaInfo}>
-                <Text style={styles.tierBadge}>{msg.tier}</Text>
-                <Text style={styles.timestamp}>{msg.timestamp}</Text>
-              </View>
-            )}
-
-            {msg.role === 'user' && (
-              <Text style={styles.timestamp}>{msg.timestamp}</Text>
-            )}
-          </View>
-        ))}
-
-        {isLoading && (
-          <View style={styles.loadingBubble}>
+        {loading && (
+          <View className="flex-row items-center gap-3 p-4">
             <ActivityIndicator color="#00f0ff" />
-            <Text style={styles.loadingText}>Thinking...</Text>
+            <Text className="text-neon-cyan text-sm font-mono">Processing...</Text>
           </View>
         )}
       </ScrollView>
 
       {/* Input */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="Type your message..."
-          placeholderTextColor="#666"
-          multiline
-          maxLength={2000}
-          editable={!isLoading}
-          onSubmitEditing={sendMessage}
-          blurOnSubmit={false}
-        />
-        <TouchableOpacity 
-          style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
-          onPress={sendMessage}
-          disabled={!inputText.trim() || isLoading}
-        >
-          <Text style={styles.sendButtonText}>→</Text>
-        </TouchableOpacity>
+      <View className="px-4 pb-6 pt-3 border-t border-cyber-border">
+        <View className="flex-row gap-3">
+          <TextInput
+            className="flex-1 bg-cyber-card border border-cyber-border rounded-lg px-4 py-3 text-slate-200 font-mono"
+            value={input}
+            onChangeText={setInput}
+            placeholder="Enter command..."
+            placeholderTextColor="#667"
+            multiline
+            maxLength={1000}
+            editable={!loading}
+            onSubmitEditing={handleSend}
+          />
+          <TouchableOpacity
+            onPress={handleSend}
+            disabled={loading || !input.trim()}
+            className={`w-14 h-14 rounded-lg items-center justify-center border ${loading || !input.trim()
+                ? 'bg-cyber-card border-cyber-border opacity-50'
+                : 'bg-neon-cyan/20 border-neon-cyan'
+              }`}
+          >
+            <Text className="text-neon-cyan text-2xl">➤</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0a0a12',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    paddingTop: 50,
-    backgroundColor: '#0d0d1a',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1a1a3e',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#00f0ff',
-    letterSpacing: 2,
-  },
-  status: {
-    fontSize: 10,
-    color: '#666',
-    marginTop: 4,
-  },
-  clearButton: {
-    padding: 8,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#ff00aa',
-  },
-  clearButtonText: {
-    color: '#ff00aa',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  messagesContainer: {
-    flex: 1,
-  },
-  messagesContent: {
-    padding: 16,
-    paddingBottom: 8,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 100,
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  emptyText: {
-    fontSize: 18,
-    color: '#00f0ff',
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  emptyHint: {
-    fontSize: 12,
-    color: '#666',
-  },
-  messageBubble: {
-    marginBottom: 12,
-    padding: 12,
-    borderRadius: 12,
-    maxWidth: width * 0.8,
-  },
-  userBubble: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#00f0ff22',
-    borderBottomRightRadius: 4,
-    borderWidth: 1,
-    borderColor: '#00f0ff44',
-  },
-  aiBubble: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#111128',
-    borderBottomLeftRadius: 4,
-    borderLeftWidth: 3,
-    borderLeftColor: '#39ff14',
-  },
-  errorBubble: {
-    alignSelf: 'center',
-    backgroundColor: '#ff00aa11',
-    borderWidth: 1,
-    borderColor: '#ff00aa44',
-  },
-  messageText: {
-    color: '#dde',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  metaInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#1a1a3e',
-  },
-  tierBadge: {
-    fontSize: 10,
-    color: '#39ff14',
-    fontWeight: 'bold',
-    backgroundColor: '#39ff1422',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  timestamp: {
-    fontSize: 9,
-    color: '#666',
-    alignSelf: 'flex-end',
-    marginTop: 4,
-  },
-  loadingBubble: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#111128',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  loadingText: {
-    color: '#00f0ff',
-    marginLeft: 8,
-    fontSize: 12,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    padding: 12,
-    backgroundColor: '#0d0d1a',
-    borderTopWidth: 1,
-    borderTopColor: '#1a1a3e',
-  },
-  input: {
-    flex: 1,
-    backgroundColor: '#111128',
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: '#dde',
-    fontSize: 14,
-    maxHeight: 100,
-    borderWidth: 1,
-    borderColor: '#1a1a3e',
-  },
-  sendButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#00f0ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  sendButtonDisabled: {
-    backgroundColor: '#666',
-    opacity: 0.5,
-  },
-  sendButtonText: {
-    color: '#0a0a12',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-});

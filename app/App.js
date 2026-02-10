@@ -2,16 +2,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Battery from 'expo-battery';
 import { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Animated,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet, Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Animated,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet, Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 const THEME = {
@@ -31,7 +31,7 @@ export default function App() {
   const [battery, setBattery] = useState(0);
   const [vpnIP, setVpnIP] = useState('100.x.x.x'); // Default Tailscale
   const [showConfig, setShowConfig] = useState(false);
-  
+
   const scanlineAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -60,6 +60,17 @@ export default function App() {
   };
 
   // --- 3-TIER INTELLIGENCE ---
+  const fetchWithTimeout = async (resource, options = {}) => {
+    const { timeout = 5000 } = options;
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    const response = await fetch(resource, {
+      ...options,
+      signal: controller.signal
+    });
+    return response;
+  }
+
   const handleSend = async () => {
     if (!inputText.trim()) return;
     const prompt = inputText;
@@ -73,31 +84,36 @@ export default function App() {
       // TIER 1: LIGHTWEIGHT (Phone CPU)
       setTier('Tier 1: Neural (Local)');
       // Requires mobile_bridge.py running on phone
-      const res1 = await fetch("http://127.0.0.1:8080/completion", {
+      const res1 = await fetchWithTimeout("http://127.0.0.1:8080/completion", {
         method: 'POST',
         body: JSON.stringify({ prompt: `User: ${prompt}\nAssistant:`, n_predict: 128 }),
-        headers: {'Content-Type': 'application/json'}
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 5000
       }).catch(() => null);
 
       let localContent = res1 ? (await res1.json()).content : "";
-      
+
       // ESCALATION LOGIC
       // If prompt implies system action -> Tier 2
       if (/install|setup|shell|command/i.test(prompt)) {
-         setTier('Tier 2: Automation (Local)');
-         await fetch("http://127.0.0.1:8081", {
-            method: 'POST',
-            body: JSON.stringify({ action: "execute_command", command: prompt })
-         }).catch(() => {});
+        setTier('Tier 2: Automation (Local)');
+        // Mobile bridge runs on 8082 (8081 is used by Metro/Expo). Ensure
+        // `mobile_bridge.py` is started and listening on this port.
+        await fetchWithTimeout("http://127.0.0.1:8082", {
+          method: 'POST',
+          body: JSON.stringify({ action: "execute_command", command: prompt }),
+          timeout: 10000 // Give commands a bit more time
+        }).catch(() => { });
       }
 
       // If prompt is complex/code/essay -> Tier 3 (PC)
       if (!localContent || prompt.length > 50 || /code|write|why|how|explain/i.test(prompt) || battery < 0.2) {
         setTier('Tier 3: Nexus (PC/Cloud)');
-        const res3 = await fetch(`http://${vpnIP}:5000/process`, {
+        const res3 = await fetchWithTimeout(`http://${vpnIP}:5000/process`, {
           method: 'POST',
           body: JSON.stringify({ prompt }),
-          headers: {'Content-Type': 'application/json'}
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 8000
         });
         const data3 = await res3.json();
         finalResponse = data3.response;
@@ -105,7 +121,11 @@ export default function App() {
         finalResponse = localContent;
       }
     } catch (e) {
-      finalResponse = "Connection Error. Check PC VPN or Local Bridge.";
+      if (e.name === 'AbortError') {
+        finalResponse = "Connection Timed Out. Target system unresponsive.";
+      } else {
+        finalResponse = "Connection Error. Check PC VPN or Local Bridge.";
+      }
     }
 
     setConversation(prev => [...prev, { role: 'assistant', content: finalResponse, tier: tier }]);
@@ -117,7 +137,7 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <Animated.View style={[styles.scanline, { transform: [{ translateY: scanlineAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 800] }) }] }]} />
-      
+
       <View style={styles.header}>
         <View>
           <Text style={styles.glitchText}>VON.NEXUS_v4</Text>
@@ -135,15 +155,15 @@ export default function App() {
             {msg.tier && <Text style={styles.tierTag}>{msg.tier}</Text>}
           </View>
         ))}
-        {loading && <ActivityIndicator color={THEME.accent} style={{margin: 20}} />}
+        {loading && <ActivityIndicator color={THEME.accent} style={{ margin: 20 }} />}
       </ScrollView>
 
       <View style={styles.inputArea}>
-        <TextInput 
-          style={styles.input} 
-          value={inputText} 
-          onChangeText={setInputText} 
-          placeholder="ENTER COMMAND..." 
+        <TextInput
+          style={styles.input}
+          value={inputText}
+          onChangeText={setInputText}
+          placeholder="ENTER COMMAND..."
           placeholderTextColor="#444"
           onSubmitEditing={handleSend}
         />
@@ -156,15 +176,15 @@ export default function App() {
         <View style={styles.modal}>
           <Text style={styles.modalTitle}>SYSTEM_CONFIG</Text>
           <Text style={styles.label}>NEXUS_PC_IP (Tailscale)</Text>
-          <TextInput 
-            style={styles.modalInput} 
-            value={vpnIP} 
-            onChangeText={saveConfig} 
-            placeholder="100.x.x.x" 
-            placeholderTextColor="#333" 
+          <TextInput
+            style={styles.modalInput}
+            value={vpnIP}
+            onChangeText={saveConfig}
+            placeholder="100.x.x.x"
+            placeholderTextColor="#333"
           />
           <TouchableOpacity style={styles.closeBtn} onPress={() => setShowConfig(false)}>
-            <Text style={{fontWeight:'bold'}}>CLOSE_INTERFACE</Text>
+            <Text style={{ fontWeight: 'bold' }}>CLOSE_INTERFACE</Text>
           </TouchableOpacity>
         </View>
       </Modal>

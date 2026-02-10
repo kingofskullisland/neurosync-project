@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Von Agent Link
+Comment=USB Watchdog for Von Agent mobile connection
+Exec=gnome-terminal --title="Von Agent Link" -- bash -c "/home/kosi/mobile-dev-lab/my-expo-app/nexus-link.sh; exec bash"
+Icon=utilities-terminal
+Terminal=false
+Categories=Development;Utility;
+StartupNotify=true

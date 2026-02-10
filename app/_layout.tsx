@@ -1,10 +1,11 @@
 import { Stack } from "expo-router";
+import "../global.css";
 
 export default function RootLayout() {
   return (
-    <Stack>
-      {/* This hides the default header because our Chat App has its own custom header */}
-      <Stack.Screen name="index" options={{ headerShown: false }} />
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="settings" />
     </Stack>
   );
 }
