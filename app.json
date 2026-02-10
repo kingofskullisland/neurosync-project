@@ -3,6 +3,7 @@
     "name": "Von Agent",
     "slug": "von-agent",
     "version": "1.0.0",
+    "scheme": "vonagent",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#050510",

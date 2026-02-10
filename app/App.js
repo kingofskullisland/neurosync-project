@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   Animated,
   Modal,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet, Text,
@@ -13,6 +12,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const THEME = {
   bg: '#050510',
