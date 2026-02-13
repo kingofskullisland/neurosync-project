@@ -39,9 +39,4 @@ yarn-error.*
 app-example
 
 /android
-/ios
-
-# builds
-*.apk
-*.aab
 
