@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  ImageBackground,
   Keyboard,
   Pressable,
   ScrollView,
@@ -22,6 +23,7 @@ import { AkiraTitle } from '../components/GlitchText';
 import { ModelMonitor } from '../components/ModelMonitor';
 import { StatusPill } from '../components/StatusPill';
 import { checkHealth, NetworkError, sendChat } from '../lib/api';
+import { NexusLink } from '../lib/nexus-link';
 import { routeQuery, RouteTarget } from '../lib/router';
 import {
   AppSettings,
@@ -31,6 +33,8 @@ import {
   saveChatMessages,
 } from '../lib/storage';
 import { COLORS, SHADOWS } from '../lib/theme';
+
+const backgroundImage = require('../assets/images/mechanicus_bg.png');
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -141,6 +145,29 @@ export default function ChatScreen() {
     // Scroll to bottom
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
 
+    // TIER 1: NEXUS-LINK (Local Triage)
+    try {
+      const triage = await NexusLink.triage(userMsg.content);
+      if (triage.handledLocally) {
+        const reflexMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: triage.content,
+          route: 'LOCAL',
+          model: 'Nexus-Link',
+          timestamp: Date.now(),
+        };
+        const allMsgs = [...newMessages, reflexMsg];
+        setMessages(allMsgs);
+        await autoSave(allMsgs);
+        setLoading(false);
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+        return;
+      }
+    } catch (e) {
+      console.log('Nexus Link Triage Error:', e);
+    }
+
     const decision = routeQuery(userMsg.content, settings, {
       battery,
       localOnline: ollamaOnline,
@@ -198,7 +225,7 @@ export default function ChatScreen() {
 
   const inputAreaStyle: ViewStyle = {
     paddingHorizontal: 12,
-    paddingBottom: keyboardVisible ? 8 : 24,
+    paddingBottom: keyboardVisible ? 16 : 24, // Add slight buffer when keyboard is up
     paddingTop: 10,
     backgroundColor: COLORS.PANEL,
     borderTopWidth: 1,
@@ -217,239 +244,245 @@ export default function ChatScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.BG }}>
-      {/* Header */}
-      <View style={headerStyle}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View>
-            <AkiraTitle text="NEUROSYNC" size="md" />
+    <ImageBackground source={backgroundImage} style={{ flex: 1 }} resizeMode="cover">
+      <View style={{ flex: 1, backgroundColor: 'rgba(15, 15, 15, 0.7)' }}>
+        {/* Header */}
+        <View style={headerStyle}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View>
+              <AkiraTitle text="NEUROSYNC" size="md" />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Pressable
+                onPress={() => router.push('/history')}
+                style={{
+                  padding: 8,
+                  borderRadius: 6,
+                  backgroundColor: COLORS.CARD,
+                  borderWidth: 1,
+                  borderColor: COLORS.BORDER,
+                  ...(SHADOWS.sm as object),
+                }}
+              >
+                <Text style={{ fontSize: 18 }}>📋</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  // Comment out haptics for now to rule it out
+                  // Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); 
+                  router.push('/settings');
+                }}
+                style={{
+                  padding: 8,
+                  borderRadius: 6,
+                  backgroundColor: COLORS.CARD,
+                  borderWidth: 1,
+                  borderColor: COLORS.BORDER,
+                  ...(SHADOWS.sm as object),
+                }}
+              >
+                <Text style={{ fontSize: 18 }}>⚙️</Text>
+              </Pressable>
+            </View>
           </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Pressable
-              onPress={() => router.push('/history')}
-              style={{
-                padding: 8,
-                borderRadius: 6,
-                backgroundColor: COLORS.CARD,
-                borderWidth: 1,
-                borderColor: COLORS.BORDER,
-                ...(SHADOWS.sm as object),
-              }}
-            >
-              <Text style={{ fontSize: 18 }}>📋</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push('/settings')}
-              style={{
-                padding: 8,
-                borderRadius: 6,
-                backgroundColor: COLORS.CARD,
-                borderWidth: 1,
-                borderColor: COLORS.BORDER,
-                ...(SHADOWS.sm as object),
-              }}
-            >
-              <Text style={{ fontSize: 18 }}>⚙️</Text>
-            </Pressable>
-          </View>
+
+          {/* Animated accent bar */}
+          <Animated.View
+            style={{
+              height: 2,
+              backgroundColor: COLORS.RED,
+              marginTop: 8,
+              opacity: pulseAnim,
+              borderRadius: 1,
+            }}
+          />
+
+          {/* Status Pills */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <StatusPill label="Ollama" status={ollamaOnline ? 'online' : 'offline'} />
+              <StatusPill label="Bridge" status={bridgeOnline ? 'online' : 'offline'} />
+              <StatusPill
+                label="Battery"
+                status={battery > 20 ? 'online' : 'warning'}
+                value={`${battery}%`}
+              />
+            </View>
+          </ScrollView>
+
+          {/* Compact model monitor */}
+          {settings?.modelMonitoring && settings?.selectedModel && (
+            <View style={{ marginTop: 8 }}>
+              <ModelMonitor modelName={settings.selectedModel} compact />
+            </View>
+          )}
         </View>
 
-        {/* Animated accent bar */}
-        <Animated.View
-          style={{
-            height: 2,
-            backgroundColor: COLORS.RED,
-            marginTop: 8,
-            opacity: pulseAnim,
-            borderRadius: 1,
-          }}
-        />
-
-        {/* Status Pills */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <StatusPill label="Ollama" status={ollamaOnline ? 'online' : 'offline'} />
-            <StatusPill label="Bridge" status={bridgeOnline ? 'online' : 'offline'} />
-            <StatusPill
-              label="Battery"
-              status={battery > 20 ? 'online' : 'warning'}
-              value={`${battery}%`}
-            />
-          </View>
-        </ScrollView>
-
-        {/* Compact model monitor */}
-        {settings?.modelMonitoring && settings?.selectedModel && (
-          <View style={{ marginTop: 8 }}>
-            <ModelMonitor modelName={settings.selectedModel} compact />
-          </View>
-        )}
-      </View>
-
-      {/* Error Banner */}
-      {error && (
-        <Pressable
-          onPress={() => setError(null)}
-          style={{
-            backgroundColor: COLORS.RED + '20',
-            borderBottomWidth: 1,
-            borderBottomColor: COLORS.RED + '60',
-            paddingHorizontal: 16,
-            paddingVertical: 10,
-          }}
-        >
-          <Text
-            style={{
-              color: COLORS.RED,
-              fontSize: 12,
-              fontFamily: 'monospace',
-              textAlign: 'center',
-            }}
-          >
-            {error}
-          </Text>
-        </Pressable>
-      )}
-
-      {/* Messages */}
-      <ScrollView
-        ref={scrollRef}
-        style={{ flex: 1, paddingHorizontal: 14 }}
-        contentContainerStyle={{ paddingVertical: 16, flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
-        onContentSizeChange={() =>
-          scrollRef.current?.scrollToEnd({ animated: true })
-        }
-      >
-        {messages.length === 0 ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60 }}>
-            <Text style={{ fontSize: 48, marginBottom: 16 }}>🧠</Text>
-            <Text
-              style={{
-                color: COLORS.TEXT_BRIGHT,
-                fontSize: 16,
-                fontFamily: 'monospace',
-                fontWeight: '700',
-                letterSpacing: 2,
-              }}
-            >
-              NEURAL LINK READY
-            </Text>
-            <View
-              style={{
-                width: 40,
-                height: 2,
-                backgroundColor: COLORS.RED,
-                marginTop: 8,
-                marginBottom: 12,
-              }}
-            />
-            <Text
-              style={{
-                color: COLORS.TEXT_DIM,
-                fontSize: 12,
-                textAlign: 'center',
-                paddingHorizontal: 40,
-                lineHeight: 18,
-              }}
-            >
-              {bridgeOnline
-                ? 'Send a message to begin'
-                : 'Configure connection in settings'}
-            </Text>
-          </View>
-        ) : (
-          messages.map((msg) => (
-            <ChatBubble
-              key={msg.id}
-              role={msg.role}
-              content={msg.content}
-              route={msg.route as RouteTarget}
-              timestamp={msg.timestamp}
-              model={msg.model}
-            />
-          ))
-        )}
-
-        {loading && (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 10,
-              padding: 16,
-            }}
-          >
-            <ActivityIndicator color={COLORS.TEAL} />
-            <Text
-              style={{
-                color: COLORS.TEAL,
-                fontSize: 12,
-                fontFamily: 'monospace',
-              }}
-            >
-              Processing...
-            </Text>
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Input Area — properly keyboard-aware */}
-      <View style={inputAreaStyle}>
-        <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-end' }}>
-          <TextInput
-            ref={inputRef}
-            style={{
-              flex: 1,
-              backgroundColor: COLORS.CARD,
-              borderWidth: 1,
-              borderColor: COLORS.BORDER,
-              borderRadius: 8,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              color: COLORS.TEXT_BRIGHT,
-              fontFamily: 'monospace',
-              fontSize: settings?.fontSize || 13,
-              maxHeight: 120,
-              ...(SHADOWS.sm as object),
-            }}
-            value={input}
-            onChangeText={setInput}
-            placeholder="Enter command..."
-            placeholderTextColor={COLORS.TEXT_MUTED}
-            multiline
-            maxLength={2000}
-            editable={!loading}
-            returnKeyType="default"
-            blurOnSubmit={false}
-          />
+        {/* Error Banner */}
+        {error && (
           <Pressable
-            onPress={handleSend}
-            disabled={loading || !input.trim()}
-            style={[
-              sendButtonStyle,
-              {
-                borderColor:
-                  loading || !input.trim() ? COLORS.BORDER : COLORS.RED,
-                backgroundColor:
-                  loading || !input.trim() ? COLORS.CARD : COLORS.RED + '20',
-                opacity: loading || !input.trim() ? 0.5 : 1,
-              },
-            ]}
+            onPress={() => setError(null)}
+            style={{
+              backgroundColor: COLORS.RED + '20',
+              borderBottomWidth: 1,
+              borderBottomColor: COLORS.RED + '60',
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+            }}
           >
             <Text
               style={{
-                color:
-                  loading || !input.trim() ? COLORS.TEXT_DIM : COLORS.RED,
-                fontSize: 20,
-                fontWeight: '700',
+                color: COLORS.RED,
+                fontSize: 12,
+                fontFamily: 'monospace',
+                textAlign: 'center',
               }}
             >
-              ➤
+              {error}
             </Text>
           </Pressable>
+        )}
+
+        {/* Messages */}
+        <ScrollView
+          ref={scrollRef}
+          style={{ flex: 1, paddingHorizontal: 14 }}
+          contentContainerStyle={{ paddingVertical: 16, flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() =>
+            scrollRef.current?.scrollToEnd({ animated: true })
+          }
+        >
+          {messages.length === 0 ? (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60 }}>
+              <Text style={{ fontSize: 48, marginBottom: 16 }}>🧠</Text>
+              <Text
+                style={{
+                  color: COLORS.TEXT_BRIGHT,
+                  fontSize: 16,
+                  fontFamily: 'monospace',
+                  fontWeight: '700',
+                  letterSpacing: 2,
+                }}
+              >
+                MACHINE SPIRIT COMMUNING
+              </Text>
+              <View
+                style={{
+                  width: 40,
+                  height: 2,
+                  backgroundColor: COLORS.RED,
+                  marginTop: 8,
+                  marginBottom: 12,
+                }}
+              />
+              <Text
+                style={{
+                  color: COLORS.TEXT_DIM,
+                  fontSize: 12,
+                  textAlign: 'center',
+                  paddingHorizontal: 40,
+                  lineHeight: 18,
+                }}
+              >
+                {bridgeOnline
+                  ? 'Initiate data transmission'
+                  : 'Configure connection in settings'}
+              </Text>
+            </View>
+          ) : (
+            messages.map((msg) => (
+              <ChatBubble
+                key={msg.id}
+                role={msg.role}
+                content={msg.content}
+                route={msg.route as RouteTarget}
+                timestamp={msg.timestamp}
+                model={msg.model}
+              />
+            ))
+          )}
+
+          {loading && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                padding: 16,
+              }}
+            >
+              <ActivityIndicator color={COLORS.TEAL} />
+              <Text
+                style={{
+                  color: COLORS.TEAL,
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                }}
+              >
+                Processing...
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+
+        {/* Input Area — properly keyboard-aware */}
+        <View style={inputAreaStyle}>
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-end' }}>
+            <TextInput
+              ref={inputRef}
+              style={{
+                flex: 1,
+                backgroundColor: COLORS.CARD,
+                borderWidth: 1,
+                borderColor: COLORS.BORDER,
+                borderRadius: 8,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                color: COLORS.TEXT_BRIGHT,
+                fontFamily: 'monospace',
+                fontSize: settings?.fontSize || 13,
+                maxHeight: 120,
+                ...(SHADOWS.sm as object),
+              }}
+              value={input}
+              onChangeText={setInput}
+              placeholder="Input data for cogitation..."
+              placeholderTextColor={COLORS.TEXT_MUTED}
+              multiline
+              maxLength={2000}
+              editable={!loading}
+              returnKeyType="default"
+              blurOnSubmit={false}
+            />
+            <Pressable
+              onPress={handleSend}
+              disabled={loading || !input.trim()}
+              style={[
+                sendButtonStyle,
+                {
+                  borderColor:
+                    loading || !input.trim() ? COLORS.BORDER : COLORS.RED,
+                  backgroundColor:
+                    loading || !input.trim() ? COLORS.CARD : COLORS.RED + '20',
+                  opacity: loading || !input.trim() ? 0.5 : 1,
+                },
+              ]}
+            >
+              <Text
+                style={{
+                  color:
+                    loading || !input.trim() ? COLORS.TEXT_DIM : COLORS.RED,
+                  fontSize: 20,
+                  fontWeight: '700',
+                }}
+              >
+                TX
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </View>
-    </View>
+    </ImageBackground>
   );
 }

@@ -2,7 +2,7 @@ import socket
 
 # Bind to 0.0.0.0 to accept from Tailscale interface
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind(('100.110.208.79', 5000)) 
+s.bind(('0.0.0.0', 5000)) 
 s.listen(1)
 
 conn, addr = s.accept()
