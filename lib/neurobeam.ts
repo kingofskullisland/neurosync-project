@@ -4,7 +4,7 @@
  * AES-256-GCM encrypted WebSocket transport
  */
 import { Buffer } from 'buffer';
-import * as Crypto from 'expo-crypto';
+import QuickCrypto from 'react-native-quick-crypto';
 
 // Polyfill for React Native
 if (typeof global.Buffer === 'undefined') {
@@ -44,51 +44,45 @@ type BeamListener = (stats: BeamStats) => void;
 // ─── Encryption ─────────────────────────────────────────────
 
 /**
- * Simplified AES-256-CTR encryption for React Native
- * Note: Using CTR mode instead of GCM for React Native compatibility
- * Security: Still provides confidentiality, but not authentication
- * TODO: Add HMAC for authentication in production
+ * AES-256-GCM Encryption
+ * Secured for NeuroSync v6.0
  */
-class BeamCrypto {
-    private key: Uint8Array;
+    private key: any;
 
-    constructor(keyBase64: string) {
-        this.key = Buffer.from(keyBase64, 'base64');
-    }
+constructor(keyBase64: string) {
+    this.key = Buffer.from(keyBase64, 'base64');
+}
 
-    async encrypt(plaintext: string): Promise<{ c: string; n: string }> {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(plaintext);
+    async encrypt(plaintext: string): Promise < { c: string; n: string; t: string } > {
+    // GCM IV is typically 12 bytes
+    const iv = QuickCrypto.randomBytes(12);
 
-        // Generate random 128-bit nonce (IV for CTR mode)
-        const nonce = await Crypto.getRandomBytesAsync(16);
+    const cipher = QuickCrypto.createCipheriv('aes-256-gcm', this.key, iv);
 
-        // Simple XOR-based encryption (placeholder for production AES-CTR)
-        // In production, use a proper crypto library like crypto-js or noble-ciphers
-        const ciphertext = new Uint8Array(data.length);
-        for (let i = 0; i < data.length; i++) {
-            ciphertext[i] = data[i] ^ this.key[i % this.key.length] ^ nonce[i % nonce.length];
-        }
+    let encrypted = cipher.update(plaintext, 'utf8', 'base64');
+    encrypted += cipher.final('base64');
 
-        return {
-            c: Buffer.from(ciphertext).toString('base64'),
-            n: Buffer.from(nonce).toString('base64'),
-        };
-    }
+    const tag = cipher.getAuthTag();
 
-    async decrypt(envelope: { c: string; n: string }): Promise<string> {
-        const ciphertext = Buffer.from(envelope.c, 'base64');
-        const nonce = Buffer.from(envelope.n, 'base64');
+    return {
+        c: encrypted,
+        n: iv.toString('base64'),
+        t: tag.toString('base64'),
+    };
+}
 
-        // Simple XOR-based decryption (same as encryption for XOR)
-        const plaintext = new Uint8Array(ciphertext.length);
-        for (let i = 0; i < ciphertext.length; i++) {
-            plaintext[i] = ciphertext[i] ^ this.key[i % this.key.length] ^ nonce[i % nonce.length];
-        }
+    async decrypt(envelope: { c: string; n: string; t: string }): Promise < string > {
+    const iv = Buffer.from(envelope.n, 'base64');
+    const tag = Buffer.from(envelope.t, 'base64');
 
-        const decoder = new TextDecoder();
-        return decoder.decode(plaintext);
-    }
+    const decipher = QuickCrypto.createDecipheriv('aes-256-gcm', this.key, iv);
+    decipher.setAuthTag(tag);
+
+    let decrypted = decipher.update(envelope.c, 'base64', 'utf8');
+    decrypted += decipher.final('utf8');
+
+    return decrypted;
+}
 }
 
 // ─── NeuroBeam Client ───────────────────────────────────────
@@ -192,7 +186,7 @@ export class NeuroBeam {
         this.stats.connectedSince = null;
     }
 
-    private async handleMessage(envelope: { c: string; n: string }): Promise<void> {
+    private async handleMessage(envelope: { c: string; n: string; t: string }): Promise<void> {
         try {
             const decrypted = await this.crypto!.decrypt(envelope);
             const message = JSON.parse(decrypted);
