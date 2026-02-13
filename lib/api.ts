@@ -1,6 +1,6 @@
 /**
  * Von Agent API Client
- * Connects to Python bridge on port 8082, Ollama on port 11435
+ * Connects to Python bridge on port 8082, Ollama on port 11434
  */
 
 const BRIDGE_PORT = 8082;
