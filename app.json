@@ -12,6 +12,7 @@
       "adaptiveIcon": {
         "backgroundColor": "#050510"
       },
+      "softwareKeyboardLayoutMode": "pan",
       "permissions": [
         "BATTERY_STATS"
       ]
@@ -24,8 +25,7 @@
             "usesCleartextTraffic": true
           }
         }
-      ],
-      "expo-barcode-scanner"
+      ]
     ],
     "extra": {
       "eas": {

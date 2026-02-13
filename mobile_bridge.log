@@ -1,2 +1,17 @@
 nohup: ignoring input
-127.0.0.1 - - [08/Feb/2026 19:25:55] "POST / HTTP/1.1" 200 -
+[VON] Bridge starting on 0.0.0.0:8082
+[VON] Ollama upstream: http://localhost:11435/api/generate
+ * Serving Flask app 'mobile_bridge' (lazy loading)
+ * Environment: production
+   WARNING: This is a development server. Do not use it in a production deployment.
+   Use a production WSGI server instead.
+ * Debug mode: off
+ * Running on all addresses.
+   WARNING: This is a development server. Do not use it in a production deployment.
+ * Running on http://192.168.1.62:8082/ (Press CTRL+C to quit)
+127.0.0.1 - - [11/Feb/2026 14:53:01] "GET /health HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 14:53:01] "GET /models HTTP/1.1" 200 -
+127.0.0.1 - - [11/Feb/2026 14:53:01] "GET /score?query=What+is+2%2B2%3F HTTP/1.1" 404 -
+127.0.0.1 - - [11/Feb/2026 14:53:01] "GET /score?query=Explain+quantum+entanglement+in+detail HTTP/1.1" 404 -
+127.0.0.1 - - [11/Feb/2026 14:53:02] "GET /score?query=Show+me+a+picture+of+a+cat HTTP/1.1" 404 -
+127.0.0.1 - - [11/Feb/2026 14:53:02] "POST /chat HTTP/1.1" 200 -
