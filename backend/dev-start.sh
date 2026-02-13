@@ -58,10 +58,18 @@ main() {
         echo "✅ Port $PORT is available"
     fi
     
+    # Full Exorcism: Clear Python Cache
+    echo "🧹 Purging __pycache__ artifacts..."
+    find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+    
     echo ""
     echo "🔧 Starting Python application..."
     echo "   Command: $PYTHON_CMD -m $APP_MODULE"
     echo ""
+    
+    # Vulkan / ROCm Optimizations for RX 6800 XT
+    export OLLAMA_VULKAN=1
+    export HSA_OVERRIDE_GFX_VERSION=10.3.0
     
     # Start the application
     $PYTHON_CMD -m $APP_MODULE

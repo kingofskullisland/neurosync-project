@@ -14,6 +14,8 @@ import os
 from .core.config import settings
 from .core.router import router as ai_router, RouteTarget
 from .core.scorer import scorer
+from .core.prompts import get_system_prompt, Persona
+from .schemas.responses import ChatRequest, ChatResponse, HealthResponse, ModelListResponse
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -49,27 +51,8 @@ app.add_middleware(
 # MODELS
 # =============================================================================
 
-class ChatRequest(BaseModel):
-    prompt: str
-    model: Optional[str] = None
-    image: Optional[str] = None  # Base64
-    screen: Optional[str] = None  # Base64
+# Models imported from schemas
 
-
-class ChatResponse(BaseModel):
-    response: str
-    route: str
-    complexity: float
-    reasoning: str  # Routing decision explanation
-    persona: str  # SPARK | CORE
-
-
-
-class HealthResponse(BaseModel):
-    status: str
-    system: str
-    backends: dict
-    ollama: Optional[str] = None  # 'connected' | 'unreachable' for mobile app
 
 
 
@@ -93,8 +76,10 @@ async def health():
         pass  # Status remains offline
 
     return {
-        "bridge": "online",
-        "ollama": ollama_status
+        "status": "online",
+        "system": "NEUROSYNC_ROUTER",
+        "ollama": "connected" if ollama_status == "online" else "unreachable",
+        "bridge": "online"
     }
 
 
@@ -104,49 +89,99 @@ async def list_models():
     ollama_url = os.getenv("OLLAMA_BASE_URL", settings.OLLAMA_URL)
     
     try:
-        async with httpx.AsyncClient() as client:
-            # CRITICAL FIX: Ollama uses /api/tags, not /models
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            # Proxy to Ollama /api/tags
             response = await client.get(f"{ollama_url}/api/tags")
             
             if response.status_code == 200:
                 data = response.json()
-                # Extract just the model names for the UI
-                model_names = [m["name"] for m in data.get("models", [])]
-                return {"models": model_names}
+                data = response.json()
+                # Pass through the full model objects as expected by mobile app
+                return {"models": data.get("models", [])}
             else:
-                return {"error": f"Ollama returned {response.status_code}"}
+                logger.error(f"Ollama /api/tags returned {response.status_code}")
+                return {"error": f"Ollama returned {response.status_code}", "models": []}
                 
     except Exception as e:
-        return {"error": str(e)}
+        logger.error(f"Failed to fetch models: {e}")
+        return {"error": str(e), "models": []}
 
 
 
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat(req: ChatRequest):
-    """
-    Non-streaming chat endpoint.
-    For streaming, use WebSocket /ws
-    """
+async def chat(request: ChatRequest):
+    # Fix for the AttributeError: Ensure decision is handled as a value
+    # Calculate complexity using the scorer directly or via router helper
+    # We'll use the router's logic to get a decision first
+    
     decision = await ai_router.route(
-        query=req.prompt,
-        has_image=bool(req.image),
-        has_screen=bool(req.screen),
-        image_data=req.image,
+        query=request.prompt,
+        has_image=bool(request.image),
+        has_screen=bool(request.screen),
+        image_data=request.image
     )
     
-    # Collect full response
-    response_parts = []
-    async for chunk in ai_router.execute(req.prompt, decision, req.image):
-        response_parts.append(chunk.content)
+    decision_score = decision.complexity # It's a float
     
-    return ChatResponse(
-        response="".join(response_parts),
-        route=decision.target.value,
-        complexity=decision.complexity.score,
-        reasoning=decision.complexity.reasoning,
-        persona=decision.persona,
-    )
+    # Injected System Prompt for Hadron
+    system_prompt_obj = get_system_prompt(Persona.HADRON)
+    system_prompt = system_prompt_obj.prompt.format(system_state="Status: Nominal") # Basic formatting to avoid error if {system_state} is present
+    
+    payload = {
+        "model": "llama3.2:latest",  # Strictly use the verified tag
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": request.prompt}
+        ],
+        "stream": False,
+        "options": {
+            "temperature": 0.4,
+            "max_tokens": 150
+        }
+    }
+
+    try:
+        # Note: Using settings.OLLAMA_URL which we set to port 11435
+        # Ensure we don't have double slash issues
+        base_url = settings.OLLAMA_URL.rstrip('/')
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                f"{base_url}/api/chat", 
+                json=payload
+            )
+            
+        if response.status_code == 200:
+            data = response.json()
+            # Mapping the correct Ollama key: ['message']['content']
+            ai_text = data.get('message', {}).get('content', "Err: Empty buffer.")
+            
+            return ChatResponse(
+                response=ai_text,
+                persona="HADRON",
+                routing="LOCAL",
+                model_used="llama3.2:latest",
+                complexity_score=decision_score
+            )
+        else:
+             return ChatResponse(
+                response=f"[COMM-FAILURE] Ollama returned {response.status_code}",
+                persona="ERROR",
+                routing="NONE",
+                model_used="none",
+                complexity_score=decision_score
+            )
+
+    except Exception as e:
+        logger.error(f"Chat Error: {e}")
+        return ChatResponse(
+            response=f"[COMM-FAILURE] {str(e)}",
+            persona="ERROR",
+            routing="NONE",
+            model_used="none",
+            complexity_score=0.0
+        )
 
 
 

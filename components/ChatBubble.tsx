@@ -79,7 +79,7 @@ export function ChatBubble({ role, content, route, timestamp, model }: ChatBubbl
         borderLeftColor: isUser ? (COLORS.RED + '50') : COLORS.TEAL,
         borderRightColor: isUser ? COLORS.RED : (COLORS.TEAL + '50'),
         backgroundColor: isUser ? COLORS.CARD : COLORS.PANEL,
-        ...(SHADOWS.md as object),
+        ...(isUser ? (SHADOWS.md as object) : (SHADOWS.cathodeGlow as object)),
     };
 
     return (
@@ -118,7 +118,7 @@ export function ChatBubble({ role, content, route, timestamp, model }: ChatBubbl
                             color: isUser ? COLORS.RED : COLORS.TEAL,
                         }}
                     >
-                        {isUser ? 'USER' : 'NEUROSYNC'}
+                        {isUser ? 'OPERATOR' : 'SERVITOR-PRIME [COGITATOR]'}
                     </Text>
                     {route && !isUser && <RouteBadge route={route} />}
                 </View>

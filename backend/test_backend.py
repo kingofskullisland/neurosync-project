@@ -72,7 +72,7 @@ class NeuroSyncTester:
                     
                     # Check Ollama status
                     ollama_status = data.get("ollama")
-                    if ollama_status == "online":
+                    if ollama_status in ["online", "connected"]:
                         self.log_test("Ollama Status", "PASS", "Ollama is online")
                     elif ollama_status == "offline":
                         self.log_test("Ollama Status", "WARN", "Ollama is offline - check OLLAMA_BASE_URL")
@@ -161,7 +161,7 @@ class NeuroSyncTester:
             async with httpx.AsyncClient() as client:
                 payload = {
                     "prompt": "Say 'Hello from NeuroSync!' and nothing else.",
-                    "model": None
+                    "model": "llama3.2:latest"
                 }
                 
                 print(f"  Sending: {payload['prompt']}")
@@ -193,7 +193,7 @@ class NeuroSyncTester:
         """Test direct Ollama connectivity"""
         self.print_header("Testing Direct Ollama Connectivity")
         
-        ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+        ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11435")
         print(f"  Testing: {ollama_url}")
         
         try:

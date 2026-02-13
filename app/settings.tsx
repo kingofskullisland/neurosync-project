@@ -18,14 +18,16 @@ import {
     View,
     ViewStyle
 } from 'react-native';
+import { BeamMonitor } from '../components/BeamMonitor';
 import { AkiraTitle } from '../components/GlitchText';
 import { ModelMonitor } from '../components/ModelMonitor';
 import { ModelPicker } from '../components/ModelPicker';
 import { NeonButton } from '../components/NeonButton';
+import { QRScanner } from '../components/QRScanner';
 import { StatusPill } from '../components/StatusPill';
 import { checkHealth } from '../lib/api';
 import { FAQ_CATEGORIES, FAQ_DATA, FAQItem } from '../lib/faq';
-import { BeamConfig, BeamStats, neurobeam } from '../lib/neurobeam';
+import { BeamConfig, BeamState, BeamStats, neurobeam } from '../lib/neurobeam';
 import {
     AppSettings,
     clearAllChats,
@@ -35,9 +37,11 @@ import {
 } from '../lib/storage';
 import { COLORS, SHADOWS } from '../lib/theme';
 
-// Enable LayoutAnimation on Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
+// ENABLE ANDROID ANIMATION FLAGS
+if (Platform.OS === 'android') {
+    if (UIManager.setLayoutAnimationEnabledExperimental) {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
 }
 
 type SectionKey = 'neurobeam' | 'connection' | 'model' | 'routing' | 'appearance' | 'chats' | 'faq' | 'about';
@@ -190,7 +194,7 @@ export default function SettingsScreen() {
                 >
                     <Text style={{ color: COLORS.BLUE, fontSize: 16, fontWeight: '700' }}>←</Text>
                 </Pressable>
-                <AkiraTitle text="CONFIG" size="md" />
+                <AkiraTitle text="COGITATOR PROTOCOLS" size="md" />
                 <View style={{ flex: 1 }} />
                 <StatusPill label="Bridge" status={status} />
             </View>
@@ -202,7 +206,7 @@ export default function SettingsScreen() {
             >
                 {/* ─── NEUROBEAM SECTION ─── */}
                 <MenuSection
-                    title="NEUROBEAM"
+                    title="NOOSPHERE BEAM"
                     icon="⚡"
                     isOpen={openSection === 'neurobeam'}
                     onToggle={() => toggleSection('neurobeam')}
@@ -216,14 +220,14 @@ export default function SettingsScreen() {
                     <View style={{ marginTop: 12, gap: 8 }}>
                         {beamStats.state === BeamState.IDLE || beamStats.state === BeamState.ERROR ? (
                             <NeonButton
-                                title="Scan QR Code"
+                                title="INITIATE SCAN"
                                 onPress={() => setShowQRScanner(true)}
                                 variant="blue"
                                 icon="📷"
                             />
                         ) : beamStats.state === BeamState.LOCKED ? (
                             <NeonButton
-                                title="Disconnect Beam"
+                                title="SEVER LINK"
                                 onPress={handleBeamDisconnect}
                                 variant="red"
                                 icon="✕"
@@ -245,7 +249,7 @@ export default function SettingsScreen() {
 
                 {/* ─── CONNECTION SECTION ─── */}
                 <MenuSection
-                    title="CONNECTION"
+                    title="UPLINK PROTOCOLS"
                     icon="🔗"
                     isOpen={openSection === 'connection'}
                     onToggle={() => toggleSection('connection')}
@@ -273,13 +277,13 @@ export default function SettingsScreen() {
                         keyboardType="number-pad"
                     />
                     <View style={{ marginTop: 8 }}>
-                        <NeonButton title="Test Connection" onPress={handleTest} loading={testing} variant="blue" icon="⚡" />
+                        <NeonButton title="TEST UPLINK" onPress={handleTest} loading={testing} variant="blue" icon="⚡" />
                     </View>
                 </MenuSection>
 
                 {/* ─── AI MODEL SECTION ─── */}
                 <MenuSection
-                    title="AI MODEL"
+                    title="LOGIC ENGINES"
                     icon="🧠"
                     isOpen={openSection === 'model'}
                     onToggle={() => toggleSection('model')}
@@ -320,7 +324,7 @@ export default function SettingsScreen() {
 
                 {/* ─── ROUTING SECTION ─── */}
                 <MenuSection
-                    title="ROUTING"
+                    title="DATA ROUTING"
                     icon="🔀"
                     isOpen={openSection === 'routing'}
                     onToggle={() => toggleSection('routing')}
@@ -388,7 +392,7 @@ export default function SettingsScreen() {
 
                 {/* ─── APPEARANCE SECTION ─── */}
                 <MenuSection
-                    title="APPEARANCE"
+                    title="OPTICAL ARRAYS"
                     icon="🎨"
                     isOpen={openSection === 'appearance'}
                     onToggle={() => toggleSection('appearance')}
@@ -405,7 +409,7 @@ export default function SettingsScreen() {
 
                 {/* ─── CHAT MANAGEMENT SECTION ─── */}
                 <MenuSection
-                    title="CHAT MANAGEMENT"
+                    title="ARCHIVE PROTOCOLS"
                     icon="💬"
                     isOpen={openSection === 'chats'}
                     onToggle={() => toggleSection('chats')}
@@ -457,7 +461,7 @@ export default function SettingsScreen() {
 
                 {/* ─── FAQ SECTION ─── */}
                 <MenuSection
-                    title="FAQ / HELP"
+                    title="PRIMER / RITES"
                     icon="❓"
                     isOpen={openSection === 'faq'}
                     onToggle={() => toggleSection('faq')}
@@ -488,14 +492,14 @@ export default function SettingsScreen() {
 
                 {/* ─── ABOUT SECTION ─── */}
                 <MenuSection
-                    title="ABOUT"
+                    title="ORIGIN DATA"
                     icon="ℹ️"
                     isOpen={openSection === 'about'}
                     onToggle={() => toggleSection('about')}
                 >
                     <View style={{ gap: 8 }}>
-                        <InfoRow label="App" value="NeuroSync v1.0.0" />
-                        <InfoRow label="Theme" value="Akira | Neo-Tokyo" />
+                        <InfoRow label="Construct" value="NeuroSync v1.0.0" />
+                        <InfoRow label="Aesthetic" value="Grimdark | Mechanicus" />
                         <InfoRow label="Bridge Port" value={String(settings.bridgePort)} />
                         <InfoRow label="Active Model" value={settings.selectedModel} />
                         <InfoRow label="Route Mode" value={settings.routeMode.toUpperCase()} />
@@ -651,6 +655,10 @@ function InputField({
                 placeholderTextColor={COLORS.TEXT_MUTED}
                 keyboardType={keyboardType}
                 autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="off"
+                textContentType="none"
+                spellCheck={false}
             />
             {hint && (
                 <Text
