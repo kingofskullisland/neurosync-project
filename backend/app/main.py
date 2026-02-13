@@ -129,7 +129,7 @@ async def chat(request: ChatRequest):
     system_prompt = system_prompt_obj.prompt.format(system_state="Status: Nominal") # Basic formatting to avoid error if {system_state} is present
     
     payload = {
-        "model": "llama3.2:3b",  # Strictly use the verified tag
+        "model": "llama3.2:latest",  # Strictly use the verified tag
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": request.prompt}
@@ -161,7 +161,7 @@ async def chat(request: ChatRequest):
                 response=ai_text,
                 persona="HADRON",
                 routing="LOCAL",
-                model_used="llama3.2:3b",
+                model_used="llama3.2:latest",
                 complexity_score=decision_score
             )
         else:
