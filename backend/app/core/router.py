@@ -2,8 +2,6 @@
 NeuroSync Router - Decision Matrix & Orchestration
 Routes queries to appropriate AI backend based on complexity
 """
-from app.core.prompts import get_system_prompt, Persona
-import asyncio
 from typing import AsyncGenerator, Optional
 from dataclasses import dataclass
 from enum import Enum
