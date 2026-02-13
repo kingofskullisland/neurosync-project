@@ -145,6 +145,12 @@ export async function sendChat(
         }
 
         const data = await response.json();
+
+        // Check for explicit error in 200 OK response (legacy bridge behavior)
+        if (data.error) {
+            throw new NetworkError(data.error);
+        }
+
         if (!data.response) {
             throw new NetworkError('Empty response from AI');
         }

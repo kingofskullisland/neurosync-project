@@ -2,7 +2,7 @@
 NeuroSync Router - Decision Matrix & Orchestration
 Routes queries to appropriate AI backend based on complexity
 """
-from app.core.prompts import get_system_prompt, Persona
+
 import asyncio
 from typing import AsyncGenerator, Optional
 from dataclasses import dataclass
@@ -11,27 +11,26 @@ import logging
 
 from .config import settings
 from .scorer import scorer, ComplexityScore
-from .prompts import get_prompt_for_route, Persona
-
+from .prompts import get_prompt_for_route, get_system_prompt, Persona
+from .governor import governor
 
 logger = logging.getLogger(__name__)
 
 
 class RouteTarget(str, Enum):
-    LOCAL = "LOCAL"
-    GEMINI = "GEMINI"
-    CLAUDE = "CLAUDE"
-    OLLAMA = "OLLAMA"
+    LOCAL = "LOCAL"    # -> OVERSEER (Llama 3.2)
+    OLLAMA = "OLLAMA"  # -> SERVITOR (Gemma 2b)
+    GEMINI = "GEMINI"  # -> OMNISSIAH (Gemini 3)
+    CLAUDE = "CLAUDE"  # -> Fallback
 
 
 @dataclass
 class RouteDecision:
     target: RouteTarget
     reason: str
-    complexity: ComplexityScore
-    persona: str  # SPARK | CORE
-    context: Optional[str] = None  # RAG context if any
-
+    complexity: float
+    persona: str
+    context: Optional[str] = None
 
 
 @dataclass
@@ -43,42 +42,21 @@ class StreamChunk:
 
 class Router:
     """
-    Central routing orchestrator.
-    
-    Decision flow:
-    1. Score complexity
-    2. Check RAG for relevant context
-    3. Route to appropriate backend
-    4. Stream response back
+    Central routing orchestrator (The Cognitive Governor's Actuator).
     """
     
     def __init__(self):
         self._gemini_available = bool(settings.GEMINI_API_KEY)
         self._claude_available = bool(settings.ANTHROPIC_API_KEY)
-        self._ollama_checked = False
-        self._ollama_available = False
+        self._ollama_available = True # Assume true, let governor handle check
     
     async def check_backends(self) -> dict[str, bool]:
         """Check availability of all backends"""
-        import httpx
-        
-        status = {
+        # Governor can handle this, but keeping for legacy compatibility
+        return {
             'gemini': self._gemini_available,
-            'claude': self._claude_available,
-            'ollama': False,
+            'ollama': True
         }
-        
-        # Check Ollama
-        try:
-            async with httpx.AsyncClient(timeout=3.0) as client:
-                resp = await client.get(f"{settings.OLLAMA_URL}/api/tags")
-                status['ollama'] = resp.status_code == 200
-                self._ollama_available = status['ollama']
-        except Exception:
-            pass
-        
-        self._ollama_checked = True
-        return status
     
     async def route(
         self,
@@ -88,68 +66,33 @@ class Router:
         image_data: Optional[str] = None,
         rag_context: Optional[str] = None,
     ) -> RouteDecision:
-        """Determine route for a query"""
+        """Determine route using Cognitive Governor"""
         
-        context_tokens = len(rag_context.split()) if rag_context else 0
+        # 1. Ask Governor for Intent (Returns RoutingDecision object)
+        gov_decision = governor.classify_intent(query)
         
-        # Score complexity
-        complexity = scorer.score(
-            query=query,
-            has_image=has_image,
-            has_screen=has_screen,
-            context_tokens=context_tokens,
-        )
+        target = RouteTarget.LOCAL
         
-        # Map recommendation to target
-        rec = complexity.recommendation
-        target, reason = self._resolve_target(rec, has_image)
-        
-        # Select persona based on complexity
-        persona = Persona.CORE if complexity.score > 0.4 else Persona.SPARK
-
-        
+        if gov_decision.target == "OMNISSIAH":
+            if self._gemini_available:
+                target = RouteTarget.GEMINI
+            else:
+                target = RouteTarget.OLLAMA # Fallback
+                
+        elif gov_decision.target == "SERVITOR":
+            target = RouteTarget.OLLAMA
+            
+        elif gov_decision.target == "OVERSEER":
+            target = RouteTarget.LOCAL
+            
         return RouteDecision(
             target=target,
-            reason=reason,
-            complexity=complexity,
-            persona=persona.value,
+            reason=gov_decision.complexity.reasoning,
+            complexity=gov_decision.complexity.score, # Float, usually
+            persona=gov_decision.persona,
             context=rag_context,
         )
 
-    
-    def _resolve_target(
-        self,
-        recommendation: str,
-        has_image: bool,
-    ) -> tuple[RouteTarget, str]:
-        """Resolve recommendation to available target with fallback"""
-        
-        if recommendation == 'local':
-            return RouteTarget.LOCAL, "Low complexity, handled locally"
-        
-        if recommendation == 'gemini':
-            if self._gemini_available:
-                return RouteTarget.GEMINI, "Routed to Gemini (speed + multimodal)"
-            if self._claude_available:
-                return RouteTarget.CLAUDE, "Gemini unavailable, fallback to Claude"
-            if self._ollama_available:
-                return RouteTarget.OLLAMA, "Cloud unavailable, fallback to Ollama"
-            return RouteTarget.LOCAL, "No backends available"
-        
-        if recommendation == 'claude':
-            if self._claude_available:
-                return RouteTarget.CLAUDE, "Routed to Claude (code/research)"
-            if self._gemini_available:
-                return RouteTarget.GEMINI, "Claude unavailable, fallback to Gemini"
-            if self._ollama_available:
-                return RouteTarget.OLLAMA, "Cloud unavailable, fallback to Ollama"
-            return RouteTarget.LOCAL, "No backends available"
-        
-        # Default fallback chain
-        if self._ollama_available:
-            return RouteTarget.OLLAMA, "Using local Ollama"
-        return RouteTarget.LOCAL, "Offline mode"
-    
     async def execute(
         self,
         query: str,
@@ -158,7 +101,9 @@ class Router:
     ) -> AsyncGenerator[StreamChunk, None]:
         """Execute query on the determined backend"""
         
-        # Prepend RAG context if available
+        # Inject System State into Prompt
+        system_state = await governor.get_system_state()
+        
         full_query = query
         if decision.context:
             full_query = f"Context:\n{decision.context}\n\nQuery:\n{query}"
@@ -166,226 +111,42 @@ class Router:
         target = decision.target
         
         if target == RouteTarget.LOCAL:
-            async for chunk in self._handle_local(query):
-                yield chunk
-        
-        elif target == RouteTarget.GEMINI:
-            async for chunk in self._call_gemini(full_query, image_data):
-                yield chunk
-        
-        elif target == RouteTarget.CLAUDE:
-            async for chunk in self._call_claude(full_query, image_data):
+            async for chunk in self._handle_local(query, system_state):
                 yield chunk
         
         elif target == RouteTarget.OLLAMA:
-            async for chunk in self._call_ollama(full_query):
+            async for chunk in self._call_servitor(full_query, system_state):
                 yield chunk
-    
-    async def _handle_local(self, query: str) -> AsyncGenerator[StreamChunk, None]:
-        """Handle simple queries locally"""
+                
+        elif target == RouteTarget.GEMINI:
+            async for chunk in self._call_omnissiah(full_query, image_data, system_state):
+                yield chunk
+
+    async def _handle_local(self, query: str, system_state: str) -> AsyncGenerator[StreamChunk, None]:
+        """Handle simple queries via OVERSEER (Llama 3.2)"""
         
         query_lower = query.lower().strip()
         
-        # Simple responses (no AI needed)
-        if query_lower in ('hello', 'hi', 'hey'):
-            yield StreamChunk("Yo, choom. What's the run?", RouteTarget.LOCAL, done=True)
+        # Hardcoded Reflexes (Nexus-Link logic emulation)
+        if query_lower in ('hello', 'hi', 'hey', 'status'):
+            yield StreamChunk(f"[Reflex] {system_state}", RouteTarget.LOCAL, done=True)
             return
-        
-        if 'time' in query_lower and ('what' in query_lower or 'current' in query_lower):
-            from datetime import datetime
-            now = datetime.now().strftime("%H:%M:%S")
-            yield StreamChunk(f"Current time: {now}", RouteTarget.LOCAL, done=True)
-            return
-        
-        if 'date' in query_lower and ('what' in query_lower or 'today' in query_lower):
-            from datetime import datetime
-            today = datetime.now().strftime("%Y-%m-%d")
-            yield StreamChunk(f"Today's date: {today}", RouteTarget.LOCAL, done=True)
-            return
-        
-        # Fallback: route to Ollama if available (with Spark persona)
-        if self._ollama_available:
-            # Get Spark prompt for fast, concise responses
-            prompt_config = get_prompt_for_route("LOCAL", enable_cot=False)
-            full_query = f"{prompt_config.prompt}\n\nUser Query: {query}"
-            
-            # Call Ollama with Spark personality
-            import httpx
-            url = f"{settings.OLLAMA_URL}/api/generate"
-            payload = {
-                "model": settings.OLLAMA_MODEL,
-                "prompt": full_query,
-                "stream": True,
-                "options": {
-                    "temperature": prompt_config.temperature,
-                    "num_predict": prompt_config.max_tokens,
-                }
-            }
-            
-            try:
-                async with httpx.AsyncClient(timeout=30.0) as client:
-                    async with client.stream("POST", url, json=payload) as response:
-                        async for line in response.aiter_lines():
-                            if line:
-                                import json
-                                data = json.loads(line)
-                                text = data.get("response", "")
-                                if text:
-                                    yield StreamChunk(text, RouteTarget.LOCAL)
-                                if data.get("done"):
-                                    break
-                yield StreamChunk("", RouteTarget.LOCAL, done=True)
-            except Exception as e:
-                logger.error(f"Local Ollama error: {e}")
-                yield StreamChunk("Link unstable. Can't reach local chrome.", RouteTarget.LOCAL, done=True)
-        else:
-            yield StreamChunk(
-                "Data corrupted. Need backend sync.",
-                RouteTarget.LOCAL,
-                done=True
-            )
 
-    
-    async def _call_gemini(
-        self,
-        query: str,
-        image_data: Optional[str] = None,
-    ) -> AsyncGenerator[StreamChunk, None]:
-        """Call Google Gemini API with streaming"""
+        # Use Hadron Overseer -> Llama 3.2
+        prompt_config = get_prompt_for_route("LOCAL", enable_cot=False)
+        formatted_prompt = prompt_config.prompt.replace("{system_state}", system_state)
+        
         import httpx
+        url = f"{settings.OLLAMA_URL}/api/chat"
         
-        if not settings.GEMINI_API_KEY:
-            yield StreamChunk("Gemini API key not configured", RouteTarget.GEMINI, done=True)
-            return
-        
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:streamGenerateContent"
-        
-        parts = [{"text": query}]
-        if image_data:
-            parts.append({
-                "inline_data": {
-                    "mime_type": "image/jpeg",
-                    "data": image_data
-                }
-            })
-        
-        # Get CORE persona for heavy cloud tasks
-        prompt_config = get_prompt_for_route("GEMINI", enable_cot=False)
+        messages = [
+            {"role": "system", "content": formatted_prompt},
+            {"role": "user", "content": query}
+        ]
         
         payload = {
-            "contents": [{
-                "role": "user",
-                "parts": parts
-            }],
-            "systemInstruction": {
-                "parts": [{"text": prompt_config.prompt}]
-            },
-            "generationConfig": {
-                "temperature": prompt_config.temperature,
-                "maxOutputTokens": prompt_config.max_tokens,
-            }
-        }
-
-        
-        try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                async with client.stream(
-                    "POST",
-                    url,
-                    json=payload,
-                    params={"key": settings.GEMINI_API_KEY},
-                ) as response:
-                    async for line in response.aiter_lines():
-                        if line.startswith("data: "):
-                            import json
-                            data = json.loads(line[6:])
-                            if "candidates" in data:
-                                text = data["candidates"][0]["content"]["parts"][0].get("text", "")
-                                if text:
-                                    yield StreamChunk(text, RouteTarget.GEMINI)
-            
-            yield StreamChunk("", RouteTarget.GEMINI, done=True)
-            
-        except Exception as e:
-            logger.error(f"Gemini error: {e}")
-            yield StreamChunk(f"Gemini error: {str(e)}", RouteTarget.GEMINI, done=True)
-    
-    async def _call_claude(
-        self,
-        query: str,
-        image_data: Optional[str] = None,
-    ) -> AsyncGenerator[StreamChunk, None]:
-        """Call Anthropic Claude API with streaming"""
-        import httpx
-        
-        if not settings.ANTHROPIC_API_KEY:
-            yield StreamChunk("Claude API key not configured", RouteTarget.CLAUDE, done=True)
-            return
-        
-        url = "https://api.anthropic.com/v1/messages"
-        
-        content = [{"type": "text", "text": query}]
-        if image_data:
-            content.insert(0, {
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/jpeg",
-                    "data": image_data,
-                }
-            })
-        
-        # Get CORE persona for heavy cloud tasks
-        prompt_config = get_prompt_for_route("CLAUDE", enable_cot=False)
-        
-        payload = {
-            "model": settings.CLAUDE_MODEL,
-            "max_tokens": prompt_config.max_tokens,
-            "temperature": prompt_config.temperature,
-            "system": prompt_config.prompt,  # System prompt injection
-            "stream": True,
-            "messages": [{"role": "user", "content": content}]
-        }
-
-        
-        headers = {
-            "x-api-key": settings.ANTHROPIC_API_KEY,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        }
-        
-        try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                async with client.stream("POST", url, json=payload, headers=headers) as response:
-                    async for line in response.aiter_lines():
-                        if line.startswith("data: "):
-                            import json
-                            data = json.loads(line[6:])
-                            if data.get("type") == "content_block_delta":
-                                text = data.get("delta", {}).get("text", "")
-                                if text:
-                                    yield StreamChunk(text, RouteTarget.CLAUDE)
-            
-            yield StreamChunk("", RouteTarget.CLAUDE, done=True)
-            
-        except Exception as e:
-            logger.error(f"Claude error: {e}")
-            yield StreamChunk(f"Claude error: {str(e)}", RouteTarget.CLAUDE, done=True)
-    
-    async def _call_ollama(self, query: str) -> AsyncGenerator[StreamChunk, None]:
-        """Call local Ollama with streaming"""
-        import httpx
-        
-        # Get CORE prompt with Chain-of-Thought for heavy tasks
-        prompt_config = get_prompt_for_route("OLLAMA", enable_cot=True)
-        
-        # Prepend system prompt to query
-        full_query = f"{prompt_config.prompt}\n\nUser Query: {query}"
-        
-        url = f"{settings.OLLAMA_URL}/api/generate"
-        payload = {
-            "model": settings.OLLAMA_MODEL,
-            "prompt": full_query,
+            "model": settings.OLLAMA_MODEL, # OVERSEER MODEL
+            "messages": messages,
             "stream": True,
             "options": {
                 "temperature": prompt_config.temperature,
@@ -394,25 +155,110 @@ class Router:
         }
         
         try:
-            async with httpx.AsyncClient(timeout=settings.OLLAMA_TIMEOUT) as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 async with client.stream("POST", url, json=payload) as response:
                     async for line in response.aiter_lines():
                         if line:
                             import json
-                            data = json.loads(line)
-                            text = data.get("response", "")
-                            if text:
-                                yield StreamChunk(text, RouteTarget.OLLAMA)
-                            if data.get("done"):
-                                break
-            
-            yield StreamChunk("", RouteTarget.OLLAMA, done=True)
-            
+                            try:
+                                data = json.loads(line)
+                                delta = data.get("message", {})
+                                text = delta.get("content", "")
+                                if text:
+                                    yield StreamChunk(text, RouteTarget.LOCAL)
+                            except: pass
+            yield StreamChunk("", RouteTarget.LOCAL, done=True)
         except Exception as e:
-            logger.error(f"Ollama error: {e}")
-            yield StreamChunk(f"Ollama error: {str(e)}", RouteTarget.OLLAMA, done=True)
+            logger.error(f"Overseer error: {e}")
+            yield StreamChunk(f"Overseer Offline: {e}", RouteTarget.LOCAL, done=True)
 
+    async def _call_servitor(self, query: str, system_state: str) -> AsyncGenerator[StreamChunk, None]:
+        """Call SERVITOR (Gemma) via Ollama"""
+        import httpx
+        
+        # Use Servitor Prompt
+        prompt_config = get_prompt_for_route("OLLAMA", enable_cot=False)
+        formatted_prompt = prompt_config.prompt.replace("{system_state}", system_state)
+        
+        url = f"{settings.OLLAMA_URL}/api/chat"
+        
+        messages = [
+            {"role": "system", "content": formatted_prompt},
+            {"role": "user", "content": query}
+        ]
+        
+        payload = {
+            "model": settings.GEMMA_MODEL, # SERVITOR MODEL
+            "messages": messages,
+            "stream": True,
+            "options": {
+                "temperature": prompt_config.temperature,
+                "num_predict": prompt_config.max_tokens,
+            }
+        }
+        
+        # Wrapper Header (Hadron's Disapproval)
+        yield StreamChunk("[Hadron] Delegating to Servitor-Unit. Processing:\n\n", RouteTarget.OLLAMA)
+        
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                async with client.stream("POST", url, json=payload) as response:
+                    async for line in response.aiter_lines():
+                        if line:
+                            import json
+                            try:
+                                data = json.loads(line)
+                                delta = data.get("message", {})
+                                text = delta.get("content", "")
+                                if text:
+                                    yield StreamChunk(text, RouteTarget.OLLAMA)
+                            except: pass
+            yield StreamChunk("", RouteTarget.OLLAMA, done=True)
+        except Exception as e:
+            yield StreamChunk(f"Servitor Malfunction: {e}", RouteTarget.OLLAMA, done=True)
 
+    async def _call_omnissiah(self, query: str, image_data: str, system_state: str) -> AsyncGenerator[StreamChunk, None]:
+        """Call OMNISSIAH (Gemini)"""
+        import httpx
+        
+        prompt_config = get_prompt_for_route("GEMINI", enable_cot=True)
+        formatted_prompt = prompt_config.prompt.replace("{system_state}", system_state)
+        
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:streamGenerateContent"
+        
+        parts = [{"text": query}]
+        if image_data:
+             parts.append({"inline_data": {"mime_type": "image/jpeg", "data": image_data}})
 
-# Singleton
+        payload = {
+            "contents": [{"role": "user", "parts": parts}],
+            "systemInstruction": {"parts": [{"text": formatted_prompt}]},
+            "generationConfig": {
+                "temperature": prompt_config.temperature,
+                "maxOutputTokens": prompt_config.max_tokens,
+            }
+        }
+        
+        yield StreamChunk("[Communing with the Omnissiah...] \n\n", RouteTarget.GEMINI)
+        
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                async with client.stream("POST", url, json=payload, params={"key": settings.GEMINI_API_KEY}) as response:
+                     async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            import json
+                            data = json.loads(line[6:])
+                            if "candidates" in data:
+                                text = data["candidates"][0]["content"]["parts"][0].get("text", "")
+                                if text:
+                                    yield StreamChunk(text, RouteTarget.GEMINI)
+            yield StreamChunk("", RouteTarget.GEMINI, done=True)
+        except Exception as e:
+            yield StreamChunk(f"Omnissiah Unreachable: {e}", RouteTarget.GEMINI, done=True)
+            
+    # Legacy stubs to satisfy interface if needed, or remove them
+    async def _call_ollama(self, query): pass # Replaced by _call_servitor
+    async def _call_gemini(self, query, image): pass # Replaced by _call_omnissiah
+    async def _call_claude(self, query, image): pass # Deprecated
+
 router = Router()

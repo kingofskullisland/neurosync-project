@@ -55,7 +55,7 @@ def chat():
     
     try:
         response = requests.post(OLLAMA_URL, json=payload, timeout=120)
-        return response.json(), 200
+        return response.json(), response.status_code
     except requests.exceptions.Timeout:
         return jsonify({"error": "Model processing timed out (120s)"}), 504
     except requests.exceptions.ConnectionError:
