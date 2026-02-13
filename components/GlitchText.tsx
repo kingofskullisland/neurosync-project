@@ -29,7 +29,7 @@ export function AkiraTitle({ text, size = 'lg', accent }: AkiraTitleProps) {
                 style={{
                     fontSize: s.fontSize,
                     fontWeight: '800',
-                    color: COLORS.TEXT_BRIGHT,
+                    color: COLORS.GREEN, // Force Mechanicus Green for titles
                     letterSpacing: s.letterSpacing,
                     textTransform: 'uppercase',
                     fontFamily: 'monospace',

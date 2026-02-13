@@ -3,6 +3,7 @@
 # Core FastAPI Framework
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
+qrcode
 pydantic==2.10.5
 pydantic-settings==2.7.1
 
@@ -20,3 +21,6 @@ anthropic==0.42.0
 # Python Standard Enhancements
 python-multipart==0.0.20
 python-dotenv==1.0.1
+
+# QR Code Generation (Noosphere Beam)
+qrcode[pil]==8.0

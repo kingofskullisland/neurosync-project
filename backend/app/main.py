@@ -2,7 +2,7 @@
 NeuroSync Router - FastAPI Application
 """
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -10,16 +10,57 @@ import json
 import logging
 import httpx
 import os
+import base64
+import socket
+import time
+import uuid
+import qrcode
+import io
+from fastapi import Request
 
 from .core.config import settings
 from .core.router import router as ai_router, RouteTarget
 from .core.scorer import scorer
 from .core.prompts import get_system_prompt, Persona
 from .schemas.responses import ChatRequest, ChatResponse, HealthResponse, ModelListResponse
+from .schemas.requests import BeamRequest
+from .utils.qr_generator import generate_beam_matrix
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# --- Configuration ---
+# This acts as our "Session Store" for now
+CURRENT_SESSION = {
+    "token": str(uuid.uuid4())[:8],
+    "host_ip": "127.0.0.1"
+}
+
+def get_local_ip():
+    """Detects the machine's actual LAN IP address."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # Connect to a public DNS server (doesn't send data)
+        s.connect(('8.8.8.8', 80))
+        IP = s.getsockname()[0]
+    except Exception:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    return IP
+
+def print_terminal_qr(url):
+    """Generates ASCII QR code in the terminal."""
+    qr = qrcode.QRCode()
+    qr.add_data(url)
+    print("\n" + "="*40)
+    print("⚡  NOOSPHERE BEAM ACTIVE  ⚡")
+    print("="*40)
+    # invert=True helps on dark terminal backgrounds
+    qr.print_ascii(invert=True)
+    print(f"Token: {CURRENT_SESSION['token']}")
+    print(f"Link:  {url}")
+    print("="*40 + "\n")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,8 +68,33 @@ async def lifespan(app: FastAPI):
     logger.info("NeuroSync Router starting...")
     backends = await ai_router.check_backends()
     logger.info(f"Backend status: {backends}")
+    
+    # 1. Detect IP and Update Session
+    ip = get_local_ip()
+    CURRENT_SESSION["host_ip"] = ip
+    
+    # 2. Construct the Deep Link
+    # Schema: noosphere://beam?mode=tether&host=...&token=...
+    payload = {
+        "mode": "tether",
+        "host": f"http://{ip}:8000",
+        "token": CURRENT_SESSION["token"],
+        "agent": "llama3.2:latest"
+    }
+    
+    # Sign payload (Mock signature for now)
+    json_str = json.dumps(payload)
+    b64_payload = base64.urlsafe_b64encode(json_str.encode()).decode()
+    deep_link = f"noosphere://beam?p={b64_payload}&sig=cli_generated"
+    
+    # 3. Print QR to Console
+    print_terminal_qr(deep_link)
+    
     yield
     logger.info("NeuroSync Router shutting down...")
+
+
+
 
 
 app = FastAPI(
@@ -45,6 +111,34 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.post("/api/tether/chat")
+async def tether_chat(request: ChatRequest, req: Request):
+    # 1. Security Check
+    auth_header = req.headers.get("Authorization")
+    if not auth_header or CURRENT_SESSION["token"] not in auth_header:
+        raise HTTPException(status_code=403, detail="Invalid Session Token")
+
+    # 2. Forward to Local Ollama
+    try:
+        # Note: Using settings.OLLAMA_URL which we set to port 11435
+        base_url = settings.OLLAMA_URL.rstrip('/')
+        
+        # Construct payload compatible with Ollama
+        payload = {
+            "model": request.model,
+            "messages": request.messages,
+            "stream": False # Keep it simple
+        }
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            ollama_response = await client.post(
+                f"{base_url}/api/chat",
+                json=payload
+            )
+            return ollama_response.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ollama Error: {str(e)}")
 
 
 # =============================================================================
@@ -105,6 +199,22 @@ async def list_models():
     except Exception as e:
         logger.error(f"Failed to fetch models: {e}")
         return {"error": str(e), "models": []}
+
+
+@app.post("/beam")
+async def generate_beam_qr(request: BeamRequest):
+    """
+    Generate a Noosphere Beam QR Code.
+    Returns a PNG image directly.
+    """
+    qr_stream = generate_beam_matrix(
+        action=request.action.value,
+        target_id=request.target_id,
+        payload=request.payload,
+        token=request.token,
+        expiration=request.expiration
+    )
+    return Response(content=qr_stream.getvalue(), media_type="image/png")
 
 
 

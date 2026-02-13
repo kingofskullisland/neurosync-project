@@ -20,6 +20,7 @@ export const COLORS = {
     TEAL: '#2ECC71', // Cathode Green (Replacing Teal)
     BLUE: '#3CB371', // Industrial Green (Replacing Blue)
     GREEN: '#3CB371', // Industrial Green
+    GOLD: '#FFD700', // Mechanicus Gold
 
     // Text
     TEXT_BRIGHT: '#E0E0E0', // Parchment / Etched Metal
