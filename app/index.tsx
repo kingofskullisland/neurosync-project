@@ -1,37 +1,39 @@
 /**
- * Von Agent - Neural Link (Chat Screen)
+ * NeuroSync — Chat Screen
+ * Akira-inspired UI with keyboard-aware input
  */
 import * as Battery from 'expo-battery';
+import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
-  KeyboardAvoidingView,
-  Platform,
+  Keyboard,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
+  ViewStyle
 } from 'react-native';
 import { ChatBubble } from '../components/ChatBubble';
-import { GlitchText } from '../components/GlitchText';
+import { AkiraTitle } from '../components/GlitchText';
+import { ModelMonitor } from '../components/ModelMonitor';
 import { StatusPill } from '../components/StatusPill';
 import { checkHealth, NetworkError, sendChat } from '../lib/api';
 import { routeQuery, RouteTarget } from '../lib/router';
-import { AppSettings, loadSettings } from '../lib/storage';
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  route?: RouteTarget;
-  timestamp: number;
-}
+import {
+  AppSettings,
+  ChatMessage,
+  loadSettings,
+  recordModelRequest,
+  saveChatMessages,
+} from '../lib/storage';
+import { COLORS, SHADOWS } from '../lib/theme';
 
 export default function ChatScreen() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -39,18 +41,36 @@ export default function ChatScreen() {
   const [bridgeOnline, setBridgeOnline] = useState(false);
   const [ollamaOnline, setOllamaOnline] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chatId] = useState(() => Date.now().toString());
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
-  const scanlineAnim = useRef(new Animated.Value(0)).current;
+  const inputRef = useRef<TextInput>(null);
+  const pulseAnim = useRef(new Animated.Value(0.3)).current;
 
-  // Scanline animation
+  // Subtle pulse animation for the header accent bar
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(scanlineAnim, { toValue: 1, duration: 3000, useNativeDriver: true }),
-        Animated.timing(scanlineAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0.3, duration: 2000, useNativeDriver: true }),
       ])
     ).start();
+  }, []);
+
+  // Keyboard listeners for Android
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
   }, []);
 
   // Load settings and check status
@@ -63,10 +83,8 @@ export default function ChatScreen() {
   const init = async () => {
     const s = await loadSettings();
     setSettings(s);
-
     const level = await Battery.getBatteryLevelAsync();
     setBattery(Math.round(level * 100));
-
     if (s.pcIp || s.vpnIp) {
       await checkStatus(s);
     }
@@ -75,10 +93,8 @@ export default function ChatScreen() {
   const checkStatus = async (s?: AppSettings) => {
     const cfg = s || settings;
     if (!cfg) return;
-
     const ip = cfg.vpnIp || cfg.pcIp;
     if (!ip) return;
-
     try {
       const health = await checkHealth(ip);
       setBridgeOnline(health.status === 'online');
@@ -89,6 +105,15 @@ export default function ChatScreen() {
     }
   };
 
+  const autoSave = useCallback(
+    async (msgs: ChatMessage[]) => {
+      if (settings?.autoSaveChats && msgs.length > 0) {
+        await saveChatMessages(chatId, msgs);
+      }
+    },
+    [chatId, settings]
+  );
+
   const handleSend = async () => {
     if (!input.trim() || loading || !settings) return;
 
@@ -98,39 +123,59 @@ export default function ChatScreen() {
       return;
     }
 
-    const userMsg: Message = {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    const userMsg: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
       content: input.trim(),
       timestamp: Date.now(),
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setInput('');
     setLoading(true);
     setError(null);
 
-    // Get route decision
+    // Scroll to bottom
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+
     const decision = routeQuery(userMsg.content, settings, {
       battery,
       localOnline: ollamaOnline,
       pcOnline: bridgeOnline,
     });
 
+    const startTime = Date.now();
     try {
       const response = await sendChat(ip, userMsg.content, settings.selectedModel);
+      const elapsed = Date.now() - startTime;
 
-      const aiMsg: Message = {
+      const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: response.response,
         route: decision.target,
+        model: settings.selectedModel,
         timestamp: Date.now(),
       };
 
-      setMessages(prev => [...prev, aiMsg]);
+      const allMsgs = [...newMessages, aiMsg];
+      setMessages(allMsgs);
+      await autoSave(allMsgs);
+
+      // Record model performance
+      if (settings.modelMonitoring) {
+        await recordModelRequest(settings.selectedModel, elapsed, false);
+      }
+
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (err) {
+      const elapsed = Date.now() - startTime;
+      if (settings.modelMonitoring) {
+        await recordModelRequest(settings.selectedModel, elapsed, true);
+      }
       if (err instanceof NetworkError) {
         setError(err.message);
       } else {
@@ -141,41 +186,90 @@ export default function ChatScreen() {
     }
   };
 
-  return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-cyber-bg"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      {/* Scanline */}
-      <Animated.View
-        className="absolute left-0 right-0 h-0.5 bg-neon-cyan/10 z-10"
-        style={{
-          transform: [{
-            translateY: scanlineAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 800] })
-          }]
-        }}
-      />
+  const headerStyle: ViewStyle = {
+    paddingTop: 48,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.PANEL,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+    ...(SHADOWS.md as object),
+  };
 
+  const inputAreaStyle: ViewStyle = {
+    paddingHorizontal: 12,
+    paddingBottom: keyboardVisible ? 8 : 24,
+    paddingTop: 10,
+    backgroundColor: COLORS.PANEL,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.BORDER,
+    ...(SHADOWS.lg as object),
+  };
+
+  const sendButtonStyle: ViewStyle = {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    ...(SHADOWS.sm as object),
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: COLORS.BG }}>
       {/* Header */}
-      <View className="pt-12 pb-4 px-4 border-b border-cyber-border">
-        <View className="flex-row justify-between items-center">
-          <GlitchText text="VON.AGENT" size="md" />
-          <TouchableOpacity onPress={() => router.push('/settings')} className="p-2">
-            <Text className="text-2xl">⚙️</Text>
-          </TouchableOpacity>
+      <View style={headerStyle}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View>
+            <AkiraTitle text="NEUROSYNC" size="md" />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Pressable
+              onPress={() => router.push('/history')}
+              style={{
+                padding: 8,
+                borderRadius: 6,
+                backgroundColor: COLORS.CARD,
+                borderWidth: 1,
+                borderColor: COLORS.BORDER,
+                ...(SHADOWS.sm as object),
+              }}
+            >
+              <Text style={{ fontSize: 18 }}>📋</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/settings')}
+              style={{
+                padding: 8,
+                borderRadius: 6,
+                backgroundColor: COLORS.CARD,
+                borderWidth: 1,
+                borderColor: COLORS.BORDER,
+                ...(SHADOWS.sm as object),
+              }}
+            >
+              <Text style={{ fontSize: 18 }}>⚙️</Text>
+            </Pressable>
+          </View>
         </View>
 
+        {/* Animated accent bar */}
+        <Animated.View
+          style={{
+            height: 2,
+            backgroundColor: COLORS.RED,
+            marginTop: 8,
+            opacity: pulseAnim,
+            borderRadius: 1,
+          }}
+        />
+
         {/* Status Pills */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3 -mx-1">
-          <View className="flex-row gap-2 px-1">
-            <StatusPill
-              label="Local"
-              status={ollamaOnline ? 'online' : 'offline'}
-            />
-            <StatusPill
-              label="Bridge"
-              status={bridgeOnline ? 'online' : 'offline'}
-            />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <StatusPill label="Ollama" status={ollamaOnline ? 'online' : 'offline'} />
+            <StatusPill label="Bridge" status={bridgeOnline ? 'online' : 'offline'} />
             <StatusPill
               label="Battery"
               status={battery > 20 ? 'online' : 'warning'}
@@ -183,78 +277,179 @@ export default function ChatScreen() {
             />
           </View>
         </ScrollView>
+
+        {/* Compact model monitor */}
+        {settings?.modelMonitoring && settings?.selectedModel && (
+          <View style={{ marginTop: 8 }}>
+            <ModelMonitor modelName={settings.selectedModel} compact />
+          </View>
+        )}
       </View>
 
       {/* Error Banner */}
       {error && (
-        <View className="bg-red-500/20 border-b border-red-500 px-4 py-3">
-          <Text className="text-red-400 text-sm font-mono text-center">{error}</Text>
-        </View>
+        <Pressable
+          onPress={() => setError(null)}
+          style={{
+            backgroundColor: COLORS.RED + '20',
+            borderBottomWidth: 1,
+            borderBottomColor: COLORS.RED + '60',
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+          }}
+        >
+          <Text
+            style={{
+              color: COLORS.RED,
+              fontSize: 12,
+              fontFamily: 'monospace',
+              textAlign: 'center',
+            }}
+          >
+            {error}
+          </Text>
+        </Pressable>
       )}
 
       {/* Messages */}
       <ScrollView
         ref={scrollRef}
-        className="flex-1 px-4"
-        contentContainerStyle={{ paddingVertical: 16 }}
+        style={{ flex: 1, paddingHorizontal: 14 }}
+        contentContainerStyle={{ paddingVertical: 16, flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
+        onContentSizeChange={() =>
+          scrollRef.current?.scrollToEnd({ animated: true })
+        }
       >
         {messages.length === 0 ? (
-          <View className="flex-1 items-center justify-center py-20">
-            <Text className="text-6xl mb-4">🤖</Text>
-            <Text className="text-neon-cyan text-lg font-mono font-bold">NEURAL LINK READY</Text>
-            <Text className="text-slate-500 text-sm mt-2 text-center px-8">
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60 }}>
+            <Text style={{ fontSize: 48, marginBottom: 16 }}>🧠</Text>
+            <Text
+              style={{
+                color: COLORS.TEXT_BRIGHT,
+                fontSize: 16,
+                fontFamily: 'monospace',
+                fontWeight: '700',
+                letterSpacing: 2,
+              }}
+            >
+              NEURAL LINK READY
+            </Text>
+            <View
+              style={{
+                width: 40,
+                height: 2,
+                backgroundColor: COLORS.RED,
+                marginTop: 8,
+                marginBottom: 12,
+              }}
+            />
+            <Text
+              style={{
+                color: COLORS.TEXT_DIM,
+                fontSize: 12,
+                textAlign: 'center',
+                paddingHorizontal: 40,
+                lineHeight: 18,
+              }}
+            >
               {bridgeOnline
                 ? 'Send a message to begin'
                 : 'Configure connection in settings'}
             </Text>
           </View>
         ) : (
-          messages.map(msg => (
+          messages.map((msg) => (
             <ChatBubble
               key={msg.id}
               role={msg.role}
               content={msg.content}
-              route={msg.route}
+              route={msg.route as RouteTarget}
               timestamp={msg.timestamp}
+              model={msg.model}
             />
           ))
         )}
 
         {loading && (
-          <View className="flex-row items-center gap-3 p-4">
-            <ActivityIndicator color="#00f0ff" />
-            <Text className="text-neon-cyan text-sm font-mono">Processing...</Text>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              padding: 16,
+            }}
+          >
+            <ActivityIndicator color={COLORS.TEAL} />
+            <Text
+              style={{
+                color: COLORS.TEAL,
+                fontSize: 12,
+                fontFamily: 'monospace',
+              }}
+            >
+              Processing...
+            </Text>
           </View>
         )}
       </ScrollView>
 
-      {/* Input */}
-      <View className="px-4 pb-6 pt-3 border-t border-cyber-border">
-        <View className="flex-row gap-3">
+      {/* Input Area — properly keyboard-aware */}
+      <View style={inputAreaStyle}>
+        <View style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-end' }}>
           <TextInput
-            className="flex-1 bg-cyber-card border border-cyber-border rounded-lg px-4 py-3 text-slate-200 font-mono"
+            ref={inputRef}
+            style={{
+              flex: 1,
+              backgroundColor: COLORS.CARD,
+              borderWidth: 1,
+              borderColor: COLORS.BORDER,
+              borderRadius: 8,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              color: COLORS.TEXT_BRIGHT,
+              fontFamily: 'monospace',
+              fontSize: settings?.fontSize || 13,
+              maxHeight: 120,
+              ...(SHADOWS.sm as object),
+            }}
             value={input}
             onChangeText={setInput}
             placeholder="Enter command..."
-            placeholderTextColor="#667"
+            placeholderTextColor={COLORS.TEXT_MUTED}
             multiline
-            maxLength={1000}
+            maxLength={2000}
             editable={!loading}
-            onSubmitEditing={handleSend}
+            returnKeyType="default"
+            blurOnSubmit={false}
           />
-          <TouchableOpacity
+          <Pressable
             onPress={handleSend}
             disabled={loading || !input.trim()}
-            className={`w-14 h-14 rounded-lg items-center justify-center border ${loading || !input.trim()
-                ? 'bg-cyber-card border-cyber-border opacity-50'
-                : 'bg-neon-cyan/20 border-neon-cyan'
-              }`}
+            style={[
+              sendButtonStyle,
+              {
+                borderColor:
+                  loading || !input.trim() ? COLORS.BORDER : COLORS.RED,
+                backgroundColor:
+                  loading || !input.trim() ? COLORS.CARD : COLORS.RED + '20',
+                opacity: loading || !input.trim() ? 0.5 : 1,
+              },
+            ]}
           >
-            <Text className="text-neon-cyan text-2xl">➤</Text>
-          </TouchableOpacity>
+            <Text
+              style={{
+                color:
+                  loading || !input.trim() ? COLORS.TEXT_DIM : COLORS.RED,
+                fontSize: 20,
+                fontWeight: '700',
+              }}
+            >
+              ➤
+            </Text>
+          </Pressable>
         </View>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }

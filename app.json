@@ -24,7 +24,8 @@
             "usesCleartextTraffic": true
           }
         }
-      ]
+      ],
+      "expo-barcode-scanner"
     ],
     "extra": {
       "eas": {

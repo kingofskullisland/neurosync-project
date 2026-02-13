@@ -1,0 +1,19 @@
+nohup: ignoring input
+INFO:     Will watch for changes in these directories: ['/home/kosi/mobile-dev-lab/my-expo-app/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8082 (Press CTRL+C to quit)
+INFO:     Started reloader process [90119] using WatchFiles
+INFO:     Started server process [90127]
+INFO:     Waiting for application startup.
+INFO:app.main:NeuroSync Router starting...
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:app.main:Backend status: {'gemini': False, 'claude': False, 'ollama': True}
+INFO:     Application startup complete.
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:51716 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:51720 - "GET /models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51726 - "GET /score?query=What+is+2%2B2%3F HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51726 - "GET /score?query=Explain+quantum+entanglement+in+detail HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51726 - "GET /score?query=Show+me+a+picture+of+a+cat HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:51730 - "POST /chat HTTP/1.1" 200 OK

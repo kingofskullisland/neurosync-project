@@ -1,65 +1,166 @@
 /**
- * Chat Bubble Component with Route Badge
+ * ChatBubble — Message bubble with route badge, shadow depth & entrance animation
  */
-import React from 'react';
-import { Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Text, View, ViewStyle } from 'react-native';
 import { RouteTarget } from '../lib/router';
+import { COLORS, SHADOWS } from '../lib/theme';
 
 interface ChatBubbleProps {
     role: 'user' | 'assistant';
     content: string;
     route?: RouteTarget;
     timestamp?: number;
+    model?: string;
 }
 
 function RouteBadge({ route }: { route: RouteTarget }) {
-    const colors = {
-        LOCAL: 'bg-neon-green/20 border-neon-green text-neon-green',
-        PC: 'bg-neon-cyan/20 border-neon-cyan text-neon-cyan',
-        CLOUD: 'bg-neon-magenta/20 border-neon-magenta text-neon-magenta',
+    const config: Record<RouteTarget, { bg: string; border: string; text: string }> = {
+        LOCAL: { bg: '#22c55e18', border: COLORS.GREEN, text: COLORS.GREEN },
+        PC: { bg: '#38bdf818', border: COLORS.BLUE, text: COLORS.BLUE },
+        CLOUD: { bg: '#e6394618', border: COLORS.RED, text: COLORS.RED },
     };
+    const c = config[route];
 
     return (
-        <View className={`px-2 py-0.5 rounded border ${colors[route]}`}>
-            <Text className={`text-xs font-mono ${colors[route].split(' ')[2]}`}>
+        <View
+            style={{
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                borderRadius: 3,
+                borderWidth: 1,
+                borderColor: c.border + '80',
+                backgroundColor: c.bg,
+            }}
+        >
+            <Text
+                style={{
+                    fontSize: 9,
+                    fontFamily: 'monospace',
+                    fontWeight: '700',
+                    color: c.text,
+                    letterSpacing: 0.5,
+                }}
+            >
                 {route}
             </Text>
         </View>
     );
 }
 
-export function ChatBubble({ role, content, route, timestamp }: ChatBubbleProps) {
+export function ChatBubble({ role, content, route, timestamp, model }: ChatBubbleProps) {
     const isUser = role === 'user';
+    const slideAnim = useRef(new Animated.Value(0)).current;
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(slideAnim, {
+                toValue: 1,
+                duration: 300,
+                useNativeDriver: true,
+            }),
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 250,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, []);
+
+    const bubbleStyle: ViewStyle = {
+        maxWidth: '85%',
+        padding: 14,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderLeftWidth: isUser ? 1 : 3,
+        borderRightWidth: isUser ? 3 : 1,
+        borderColor: isUser ? COLORS.RED + '50' : COLORS.TEAL + '50',
+        borderLeftColor: isUser ? (COLORS.RED + '50') : COLORS.TEAL,
+        borderRightColor: isUser ? COLORS.RED : (COLORS.TEAL + '50'),
+        backgroundColor: isUser ? COLORS.CARD : COLORS.PANEL,
+        ...(SHADOWS.md as object),
+    };
 
     return (
-        <View className={`mb-4 ${isUser ? 'items-end' : 'items-start'}`}>
-            <View
-                className={`max-w-[85%] p-4 rounded-lg border ${isUser
-                        ? 'bg-cyber-card border-neon-magenta/40'
-                        : 'bg-cyber-panel border-neon-cyan/40'
-                    }`}
-            >
+        <Animated.View
+            style={{
+                marginBottom: 14,
+                alignItems: isUser ? 'flex-end' : 'flex-start',
+                opacity: fadeAnim,
+                transform: [
+                    {
+                        translateY: slideAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [12, 0],
+                        }),
+                    },
+                ],
+            }}
+        >
+            <View style={bubbleStyle}>
                 {/* Header */}
-                <View className="flex-row items-center justify-between mb-2">
-                    <Text className={`text-xs font-mono uppercase tracking-wide ${isUser ? 'text-neon-magenta' : 'text-neon-cyan'
-                        }`}>
-                        {isUser ? 'USER' : 'VON'}
+                <View
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 6,
+                    }}
+                >
+                    <Text
+                        style={{
+                            fontSize: 10,
+                            fontFamily: 'monospace',
+                            fontWeight: '700',
+                            textTransform: 'uppercase',
+                            letterSpacing: 1.5,
+                            color: isUser ? COLORS.RED : COLORS.TEAL,
+                        }}
+                    >
+                        {isUser ? 'USER' : 'NEUROSYNC'}
                     </Text>
                     {route && !isUser && <RouteBadge route={route} />}
                 </View>
 
                 {/* Content */}
-                <Text className="text-slate-200 text-sm leading-relaxed font-mono">
+                <Text
+                    style={{
+                        color: COLORS.TEXT_BRIGHT,
+                        fontSize: 13,
+                        lineHeight: 20,
+                        fontFamily: 'monospace',
+                    }}
+                >
                     {content}
                 </Text>
 
-                {/* Timestamp */}
-                {timestamp && (
-                    <Text className="text-slate-500 text-xs mt-2 font-mono">
-                        {new Date(timestamp).toLocaleTimeString()}
-                    </Text>
-                )}
+                {/* Footer */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                    {timestamp && (
+                        <Text
+                            style={{
+                                color: COLORS.TEXT_DIM,
+                                fontSize: 9,
+                                fontFamily: 'monospace',
+                            }}
+                        >
+                            {new Date(timestamp).toLocaleTimeString()}
+                        </Text>
+                    )}
+                    {model && !isUser && (
+                        <Text
+                            style={{
+                                color: COLORS.TEXT_MUTED,
+                                fontSize: 9,
+                                fontFamily: 'monospace',
+                            }}
+                        >
+                            {model}
+                        </Text>
+                    )}
+                </View>
             </View>
-        </View>
+        </Animated.View>
     );
 }

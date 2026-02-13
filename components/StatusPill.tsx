@@ -1,8 +1,9 @@
 /**
- * Status Pill Component
+ * StatusPill — Compact status indicator with shadow depth
  */
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Text, View, ViewStyle } from 'react-native';
+import { COLORS, SHADOWS } from '../lib/theme';
 
 interface StatusPillProps {
     label: string;
@@ -10,27 +11,61 @@ interface StatusPillProps {
     value?: string;
 }
 
-export function StatusPill({ label, status, value }: StatusPillProps) {
-    const statusColors = {
-        online: 'bg-neon-green/20 border-neon-green',
-        offline: 'bg-slate-700/50 border-slate-600',
-        connecting: 'bg-neon-amber/20 border-neon-amber',
-        warning: 'bg-neon-amber/20 border-neon-amber',
-    };
+const STATUS_STYLES: Record<string, { bg: string; border: string; dot: string }> = {
+    online: { bg: '#22c55e15', border: COLORS.GREEN, dot: COLORS.GREEN },
+    offline: { bg: '#64748b15', border: COLORS.TEXT_DIM, dot: COLORS.TEXT_DIM },
+    connecting: { bg: '#f59e0b15', border: COLORS.AMBER, dot: COLORS.AMBER },
+    warning: { bg: '#f59e0b15', border: COLORS.AMBER, dot: COLORS.AMBER },
+};
 
-    const dotColors = {
-        online: 'bg-neon-green',
-        offline: 'bg-slate-500',
-        connecting: 'bg-neon-amber',
-        warning: 'bg-neon-amber',
+export function StatusPill({ label, status, value }: StatusPillProps) {
+    const style = STATUS_STYLES[status] || STATUS_STYLES.offline;
+
+    const containerStyle: ViewStyle = {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: style.border + '60',
+        backgroundColor: style.bg,
+        ...(SHADOWS.sm as object),
     };
 
     return (
-        <View className={`flex-row items-center px-3 py-2 rounded border ${statusColors[status]}`}>
-            <View className={`w-2 h-2 rounded-full mr-2 ${dotColors[status]}`} />
-            <Text className="text-slate-300 text-xs font-mono uppercase">{label}</Text>
+        <View style={containerStyle}>
+            <View
+                style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: style.dot,
+                    marginRight: 6,
+                }}
+            />
+            <Text
+                style={{
+                    color: COLORS.TEXT_MED,
+                    fontSize: 10,
+                    fontFamily: 'monospace',
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5,
+                }}
+            >
+                {label}
+            </Text>
             {value && (
-                <Text className="text-neon-cyan text-xs font-mono ml-2">{value}</Text>
+                <Text
+                    style={{
+                        color: COLORS.BLUE,
+                        fontSize: 10,
+                        fontFamily: 'monospace',
+                        marginLeft: 6,
+                    }}
+                >
+                    {value}
+                </Text>
             )}
         </View>
     );
