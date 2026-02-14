@@ -3,7 +3,6 @@ NeuroSync Router - Decision Matrix & Orchestration
 Routes queries to appropriate AI backend based on complexity
 """
 
-import asyncio
 from typing import AsyncGenerator, Optional
 from dataclasses import dataclass
 from enum import Enum
