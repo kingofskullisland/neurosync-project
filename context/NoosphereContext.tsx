@@ -1,62 +1,77 @@
-import React, { createContext, ReactNode, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useState } from 'react';
 
+// ─── Types ───────────────────────────────────────────────────────
+type AgentType = 'llama3.2:3b' | 'gemma:2b' | 'mistral:latest';
 type InferenceMode = 'local' | 'tethered';
-type AgentType = 'llama3.2:latest' | 'gemma:2b' | 'mistral:latest';
 
 interface NoosphereState {
-    // AI State
+    // Agent
     activeAgent: AgentType;
     setActiveAgent: (agent: AgentType) => void;
 
-    // Tethering State
+    // Project
+    currentProject: string | null;
+    setCurrentProject: (slug: string) => void;
+
+    // Tethering (Headless Desktop Connection)
     inferenceMode: InferenceMode;
-    setInferenceMode: (mode: InferenceMode) => void;
-    upstreamUrl: string | null; // e.g., "http://192.168.1.50:8000"
-    authToken: string | null;   // The UUID token from the QR code
+    upstreamUrl: string | null;       // e.g. "http://192.168.1.50:8000"
+    authToken: string | null;         // Bearer token from QR handshake
 
     // Actions
-    connectTether: (url: string, token: string) => void;
+    activateTether: (url: string, token: string) => void;
     disconnectTether: () => void;
 }
 
+// ─── Context ─────────────────────────────────────────────────────
 const NoosphereContext = createContext<NoosphereState | undefined>(undefined);
 
-export const NoosphereProvider = ({ children }: { children: ReactNode }) => {
-    const [activeAgent, setActiveAgent] = useState<AgentType>('llama3.2:latest');
+// ─── Provider ────────────────────────────────────────────────────
+export const NoosphereProvider = ({ children }: { children: React.ReactNode }) => {
+    const [activeAgent, setActiveAgent] = useState<AgentType>('llama3.2:3b');
+    const [currentProject, setCurrentProject] = useState<string | null>(null);
     const [inferenceMode, setInferenceMode] = useState<InferenceMode>('local');
     const [upstreamUrl, setUpstreamUrl] = useState<string | null>(null);
     const [authToken, setAuthToken] = useState<string | null>(null);
 
-    // Helper to cleanly link to desktop
-    const connectTether = (url: string, token: string) => {
+    const activateTether = useCallback((url: string, token: string) => {
+        console.log(`⚡ TETHER ACTIVATED → ${url}`);
         setUpstreamUrl(url);
         setAuthToken(token);
         setInferenceMode('tethered');
-        console.log(`🔗 Tethered to Brain at ${url}`);
-    };
+    }, []);
 
-    // Helper to cleanly sever the link
-    const disconnectTether = () => {
+    const disconnectTether = useCallback(() => {
+        console.log('🔌 TETHER DISCONNECTED → Local Mode');
         setUpstreamUrl(null);
         setAuthToken(null);
         setInferenceMode('local');
-        console.log("🔌 Tether disconnected. Reverting to local brain.");
-    };
+    }, []);
 
     return (
-        <NoosphereContext.Provider value={{
-            activeAgent, setActiveAgent,
-            inferenceMode, setInferenceMode,
-            upstreamUrl, authToken,
-            connectTether, disconnectTether
-        }}>
+        <NoosphereContext.Provider
+            value={{
+                activeAgent,
+                setActiveAgent,
+                currentProject,
+                setCurrentProject,
+                inferenceMode,
+                upstreamUrl,
+                authToken,
+                activateTether,
+                disconnectTether,
+            }}
+        >
             {children}
         </NoosphereContext.Provider>
     );
 };
 
+// ─── Hook ────────────────────────────────────────────────────────
 export const useNoosphere = () => {
     const context = useContext(NoosphereContext);
-    if (!context) throw new Error("useNoosphere must be used within a NoosphereProvider");
+    if (!context) {
+        throw new Error('useNoosphere must be used within a NoosphereProvider');
+    }
     return context;
 };

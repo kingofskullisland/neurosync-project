@@ -6,25 +6,28 @@ import { useNoosphere } from '../context/NoosphereContext';
 export default function TetherStatus() {
     const { inferenceMode, upstreamUrl, activeAgent, disconnectTether } = useNoosphere();
 
-    // If we are local, we can return null if we don't want to show anything, 
-    // or a subtle indicator.
+    // ─── Local Mode: subtle indicator ──────────────────────────────
     if (inferenceMode === 'local') {
         return (
             <View style={[styles.container, styles.local]}>
-                <Ionicons name="hardware-chip-outline" size={16} color="#666" />
-                <Text style={styles.textLocal}>On-Device Intelligence ({activeAgent})</Text>
+                <Ionicons name="phone-portrait-outline" size={16} color="#888" />
+                <Text style={styles.textLocal}>
+                    On-Device Intelligence ({activeAgent})
+                </Text>
             </View>
         );
     }
 
-    // If tethered, show the "High Power" indicator with Disconnect button
+    // ─── Tethered Mode: high-power indicator + disconnect button ───
     return (
         <View style={[styles.container, styles.tethered]}>
             <View style={styles.infoRow}>
                 <Ionicons name="flash" size={16} color="#FFD700" />
                 <View style={styles.textColumn}>
                     <Text style={styles.textTethered}>TETHERED TO DESKTOP</Text>
-                    <Text style={styles.subText}>{upstreamUrl?.replace('http://', '')}</Text>
+                    <Text style={styles.subText}>
+                        {upstreamUrl?.replace('http://', '')}
+                    </Text>
                 </View>
             </View>
 
@@ -44,52 +47,53 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        width: '100%',
     },
     local: {
-        backgroundColor: '#111',
-        borderBottomColor: '#222',
+        backgroundColor: '#222',
+        borderBottomColor: '#333',
         justifyContent: 'center',
         gap: 8,
     },
     tethered: {
-        backgroundColor: '#4B0082', // Indigo background for Tether mode
+        backgroundColor: '#4B0082',
         borderBottomColor: '#6A0DAD',
     },
     infoRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
+        gap: 8,
     },
     textColumn: {
         flexDirection: 'column',
     },
     textLocal: {
-        color: '#666',
+        color: '#888',
         fontSize: 12,
-        fontWeight: '600',
+        fontFamily: 'monospace',
     },
     textTethered: {
-        color: 'white',
-        fontSize: 12,
+        color: '#FFD700',
+        fontSize: 13,
         fontWeight: 'bold',
+        fontFamily: 'monospace',
         letterSpacing: 1,
     },
     subText: {
-        color: 'rgba(255,255,255,0.7)',
+        color: 'rgba(255,255,255,0.6)',
         fontSize: 10,
+        fontFamily: 'monospace',
     },
     disconnectBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.3)',
-        paddingVertical: 4,
-        paddingHorizontal: 8,
-        borderRadius: 12,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 6,
     },
     disconnectText: {
         color: 'white',
-        fontSize: 11,
-        fontWeight: '600',
-    }
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
 });

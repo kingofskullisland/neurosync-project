@@ -53,7 +53,7 @@ export default function ChatScreen() {
 
   // Tethering State
   const [isScanning, setIsScanning] = useState(false);
-  const { processMessage, isThinking } = useWorkloadRouter();
+  const { processMessage, loading: isThinking } = useWorkloadRouter();
   const { inferenceMode } = useNoosphere();
   const loading = isThinking; // Alias for compatibility with existing UI
 

@@ -1,59 +1,76 @@
 import { useState } from 'react';
-import { Alert } from 'react-native';
 import { useNoosphere } from '../context/NoosphereContext';
 
+/**
+ * useWorkloadRouter
+ *
+ * Decides whether to process AI prompts locally on the phone
+ * or offload to the tethered desktop (Pop!_OS / Ollama).
+ *
+ * When tethered:  POST → http://<desktop-ip>:8000/api/tether/chat
+ * When local:     Uses on-device llama.cpp or returns a fallback.
+ */
 export const useWorkloadRouter = () => {
-    const { activeAgent, inferenceMode, upstreamUrl, authToken, setInferenceMode } = useNoosphere();
-    const [isThinking, setIsThinking] = useState(false);
+    const {
+        activeAgent,
+        inferenceMode,
+        upstreamUrl,
+        authToken,
+    } = useNoosphere();
 
-    const processMessage = async (userMessage: string, history: any[]) => {
-        setIsThinking(true);
-        let aiResponse = "";
+    const [loading, setLoading] = useState(false);
+
+    const processMessage = async (
+        userMessage: string,
+        history: { role: string; content: string }[]
+    ): Promise<string> => {
+        setLoading(true);
+        let responseText = '';
 
         try {
-            // ⚡ BRANCH A: TETHERED (Desktop)
+            // ─── BRANCH 1: TETHERED MODE (Desktop handles the thinking) ───
             if (inferenceMode === 'tethered' && upstreamUrl) {
-                console.log(`⚡ Offloading to ${upstreamUrl}...`);
+                console.log('⚡ Offloading to Desktop...');
 
-                const response = await fetch(`${upstreamUrl}/api/tether/chat`, {
+                const resp = await fetch(`${upstreamUrl}/api/tether/chat`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
+                        'Authorization': `Bearer ${authToken}`,
                     },
                     body: JSON.stringify({
-                        model: activeAgent, // e.g., "llama3.2:latest"
-                        messages: [...history, { role: 'user', content: userMessage }]
-                    })
+                        model: activeAgent,
+                        messages: [...history, { role: 'user', content: userMessage }],
+                    }),
                 });
 
-                if (!response.ok) throw new Error("Desktop unreachable");
+                if (!resp.ok) throw new Error('Desktop unreachable');
 
-                const data = await response.json();
-                // Ollama often returns 'message' object, or we might need to adapt based on backend response
-                aiResponse = data.message?.content || data.response || "No response content";
-            }
+                const data = await resp.json();
+                responseText = data.message?.content ?? data.response ?? '';
 
-            // 🐌 BRANCH B: LOCAL (Phone)
-            else {
-                console.log("🐌 Using Local Inference...");
-                // This is where we would call the local model. 
-                // For now, we simulate a delay and a response to indicate local mode.
-                await new Promise(r => setTimeout(r, 1000));
-                aiResponse = "[Local Mode] I am limited by this phone's hardware. I cannot process complex queries efficiently.";
+                // ─── BRANCH 2: LOCAL MODE (Phone tries its best) ──────────────
+            } else {
+                console.log('🐌 Processing Locally...');
+
+                // Guard: Prevent running models that are too large for mobile
+                if (activeAgent.includes('70b') || activeAgent.includes('command-r')) {
+                    responseText = '⚠️ Model too large for device. Please Beam to Desktop.';
+                } else {
+                    // TODO: Replace with actual local llama.rn / llama.cpp call
+                    responseText = 'I am thinking locally... (Simulated Response)';
+                }
             }
 
         } catch (error) {
-            console.error("Router Error:", error);
-            Alert.alert("Connection Lost", "Reverting to local intelligence.");
-            setInferenceMode('local'); // Auto-fallback
-            aiResponse = "Error: Tether lost. Switched to local mode.";
+            console.error('Workload Error:', error);
+            responseText = '⚠️ Error: Connection to Noosphere Desktop lost.';
         } finally {
-            setIsThinking(false);
+            setLoading(false);
         }
 
-        return aiResponse;
+        return responseText;
     };
 
-    return { processMessage, isThinking };
+    return { processMessage, loading };
 };

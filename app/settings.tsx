@@ -536,7 +536,7 @@ export default function SettingsScreen() {
                 onClose={() => setShowQRScanner(false)}
                 onScan={handleQRScan}
             />
-        </View>
+        </View >
     );
 }
 

@@ -53,27 +53,7 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
         }
     };
 
-    // Helper to validate private IP ranges (RFC 1918 + Localhost)
-    const isPrivateIP = (host: string): boolean => {
-        // Localhost
-        if (host === 'localhost' || host === '127.0.0.1') return true;
 
-        // IPv4 Private Ranges
-        // 10.x.x.x
-        // 172.16.x.x - 172.31.x.x
-        // 192.168.x.x
-        const parts = host.split('.');
-        if (parts.length !== 4) return false; // Basic check, not a full IP regex
-
-        const first = parseInt(parts[0], 10);
-        const second = parseInt(parts[1], 10);
-
-        if (first === 10) return true;
-        if (first === 172 && second >= 16 && second <= 31) return true;
-        if (first === 192 && second === 168) return true;
-
-        return false;
-    };
 
     if (!permission) {
         return null;
@@ -280,4 +260,26 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
             </View>
         </Modal>
     );
+}
+
+// Helper to validate private IP ranges (RFC 1918 + Localhost)
+function isPrivateIP(host: string): boolean {
+    // Localhost
+    if (host === 'localhost' || host === '127.0.0.1') return true;
+
+    // IPv4 Private Ranges
+    // 10.x.x.x
+    // 172.16.x.x - 172.31.x.x
+    // 192.168.x.x
+    const parts = host.split('.');
+    if (parts.length !== 4) return false; // Basic check, not a full IP regex
+
+    const first = parseInt(parts[0], 10);
+    const second = parseInt(parts[1], 10);
+
+    if (first === 10) return true;
+    if (first === 172 && second >= 16 && second <= 31) return true;
+    if (first === 192 && second === 168) return true;
+
+    return false;
 }
