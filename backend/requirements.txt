@@ -24,3 +24,4 @@ python-dotenv==1.0.1
 
 # QR Code Generation (Noosphere Beam)
 qrcode[pil]==8.0
+cryptography==42.0.5

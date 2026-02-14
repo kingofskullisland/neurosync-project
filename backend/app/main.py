@@ -17,6 +17,8 @@ import uuid
 import qrcode
 import io
 from fastapi import Request
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
 
 from .core.config import settings
 from .core.router import router as ai_router, RouteTarget
@@ -31,10 +33,17 @@ logger = logging.getLogger(__name__)
 
 # --- Configuration ---
 # This acts as our "Session Store" for now
+# --- Configuration ---
+# This acts as our "Session Store" for now
+# Generate a strong 32-byte key for AES-256-GCM
+# We store it as base64 to easily pass it in the QR code
+session_key_bytes = os.urandom(32)
 CURRENT_SESSION = {
-    "token": str(uuid.uuid4())[:8],
+    "token": base64.urlsafe_b64encode(session_key_bytes).decode('utf-8'),
+    "key_bytes": session_key_bytes,
     "host_ip": "127.0.0.1"
 }
+
 
 def get_local_ip():
     """Detects the machine's actual LAN IP address."""
@@ -335,23 +344,89 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     logger.info("WebSocket client connected")
     
+    # Instantiate AES-GCM with the session key
+    # In a real app, we'd lookup the key based on the 'sid' from the handshake
+    aesgcm = AESGCM(CURRENT_SESSION["key_bytes"])
+
     try:
         while True:
+            # 1. Receive raw (encrypted) data
             data = await websocket.receive_text()
-            message = json.loads(data)
-            
+            message_json = json.loads(data)
+
+            # 2. Handle Handshake (Unencrypted)
+            if message_json.get("type") == "handshake":
+                sid = message_json.get("sid")
+                if sid == CURRENT_SESSION["token"]:
+                    # Create encrypted response
+                    response_payload = json.dumps({"type": "handshake_ok"}).encode('utf-8')
+                    nonce = os.urandom(12)
+                    ciphertext = aesgcm.encrypt(nonce, response_payload, None)
+                    
+                    # Send back {c, n, t} envelope (tag is appended to ciphertext in Python's AESGCM)
+                    # Python's encrypt returns ciphertext + tag. 
+                    # We need to split it if the client expects separate fields, 
+                    # BUT looking at typical libs, they often handle concatenated.
+                    # Let's verify client expectation: import QuickCrypto from 'react-native-quick-crypto';
+                    # Client decrypt: 
+                    # const iv = Buffer.from(envelope.n, 'base64');
+                    # const tag = Buffer.from(envelope.t, 'base64');
+                    # decipher.setAuthTag(tag);
+                    
+                    # So client EXPECTS separate tag.
+                    # PyCA cryptography appends tag to ciphertext.
+                    # tag is last 16 bytes.
+                    
+                    full_ct = ciphertext
+                    tag = full_ct[-16:]
+                    actual_ct = full_ct[:-16]
+                    
+                    envelope = {
+                        "c": base64.b64encode(actual_ct).decode('utf-8'),
+                        "n": base64.b64encode(nonce).decode('utf-8'),
+                        "t": base64.b64encode(tag).decode('utf-8')
+                    }
+                    await websocket.send_text(json.dumps(envelope))
+                else:
+                    await websocket.close(code=4003)
+                    return
+                continue
+
+            # 3. Handle Encrypted Messages
+            # Expecting envelope: { c, n, t }
+            try:
+                c_bytes = base64.b64decode(message_json.get("c", ""))
+                n_bytes = base64.b64decode(message_json.get("n", ""))
+                t_bytes = base64.b64decode(message_json.get("t", ""))
+                
+                # Reconstruct for PyCA: ciphertext + tag
+                full_ciphertext = c_bytes + t_bytes
+                
+                plaintext_bytes = aesgcm.decrypt(n_bytes, full_ciphertext, None)
+                plaintext = plaintext_bytes.decode('utf-8')
+                
+                message = json.loads(plaintext)
+                
+            except Exception as e:
+                logger.error(f"Decryption failed: {e}")
+                continue
+
+            # Process Message
             msg_type = message.get("type", "text")
             payload = message.get("payload", "")
             stream_id = message.get("streamId", "default")
-            context = message.get("context", {})
             
+            # ... process message ...
+            # For now, let's just echo back a simple response to verify the loop
+            # Real routing logic would go here
+            
+            # Route the request
             # Determine content type
             has_image = msg_type == "image"
             has_screen = msg_type == "screen"
             image_data = payload if (has_image or has_screen) else None
             query = payload if msg_type == "text" else "Analyze this image"
             
-            # Route the request
             decision = await ai_router.route(
                 query=query,
                 has_image=has_image,
@@ -363,26 +438,33 @@ async def websocket_endpoint(websocket: WebSocket):
             
             # Stream response
             async for chunk in ai_router.execute(query, decision, image_data):
-                await websocket.send_text(json.dumps({
+                response_data = {
                     "type": "complete" if chunk.done else "token",
                     "content": chunk.content,
                     "route": chunk.route.value,
                     "streamId": stream_id,
-                }))
+                }
+                
+                # Encrypt response
+                resp_json = json.dumps(response_data).encode('utf-8')
+                nonce = os.urandom(12)
+                ct = aesgcm.encrypt(nonce, resp_json, None)
+                
+                tag = ct[-16:]
+                actual_ct = ct[:-16]
+                
+                envelope = {
+                    "c": base64.b64encode(actual_ct).decode('utf-8'),
+                    "n": base64.b64encode(nonce).decode('utf-8'),
+                    "t": base64.b64encode(tag).decode('utf-8')
+                }
+                await websocket.send_text(json.dumps(envelope))
     
     except WebSocketDisconnect:
         logger.info("WebSocket client disconnected")
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
-        try:
-            await websocket.send_text(json.dumps({
-                "type": "error",
-                "content": str(e),
-                "route": "LOCAL",
-                "streamId": "error",
-            }))
-        except:
-            pass
+
 
 
 # =============================================================================

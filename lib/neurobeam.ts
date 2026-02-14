@@ -47,53 +47,54 @@ type BeamListener = (stats: BeamStats) => void;
  * AES-256-GCM Encryption
  * Secured for NeuroSync v6.0
  */
-    private key: any;
+class BeamCrypto {
+    key: any;
 
-constructor(keyBase64: string) {
-    this.key = Buffer.from(keyBase64, 'base64');
-}
+    constructor(keyBase64: string) {
+        this.key = Buffer.from(keyBase64, 'base64');
+    }
 
-    async encrypt(plaintext: string): Promise < { c: string; n: string; t: string } > {
-    // GCM IV is typically 12 bytes
-    const iv = QuickCrypto.randomBytes(12);
+    async encrypt(plaintext: string): Promise<{ c: string; n: string; t: string }> {
+        // GCM IV is typically 12 bytes
+        const iv = QuickCrypto.randomBytes(12);
 
-    const cipher = QuickCrypto.createCipheriv('aes-256-gcm', this.key, iv);
+        const cipher = QuickCrypto.createCipheriv('aes-256-gcm', this.key, iv);
 
-    let encrypted = cipher.update(plaintext, 'utf8', 'base64');
-    encrypted += cipher.final('base64');
+        let encrypted = cipher.update(plaintext, 'utf8', 'base64');
+        encrypted += cipher.final('base64');
 
-    const tag = cipher.getAuthTag();
+        const tag = cipher.getAuthTag();
 
-    return {
-        c: encrypted,
-        n: iv.toString('base64'),
-        t: tag.toString('base64'),
-    };
-}
+        return {
+            c: encrypted,
+            n: iv.toString('base64'),
+            t: tag.toString('base64'),
+        };
+    }
 
-    async decrypt(envelope: { c: string; n: string; t: string }): Promise < string > {
-    const iv = Buffer.from(envelope.n, 'base64');
-    const tag = Buffer.from(envelope.t, 'base64');
+    async decrypt(envelope: { c: string; n: string; t: string }): Promise<string> {
+        const iv = Buffer.from(envelope.n, 'base64');
+        const tag = Buffer.from(envelope.t, 'base64');
 
-    const decipher = QuickCrypto.createDecipheriv('aes-256-gcm', this.key, iv);
-    decipher.setAuthTag(tag);
+        const decipher = QuickCrypto.createDecipheriv('aes-256-gcm', this.key, iv);
+        decipher.setAuthTag(tag);
 
-    let decrypted = decipher.update(envelope.c, 'base64', 'utf8');
-    decrypted += decipher.final('utf8');
+        let decrypted = decipher.update(envelope.c, 'base64', 'utf8');
+        decrypted += decipher.final('utf8');
 
-    return decrypted;
-}
+        return decrypted;
+    }
 }
 
 // ─── NeuroBeam Client ───────────────────────────────────────
 
 export class NeuroBeam {
-    private config: BeamConfig | null = null;
-    private crypto: BeamCrypto | null = null;
-    private ws: WebSocket | null = null;
-    private state: BeamState = BeamState.IDLE;
-    private listeners: BeamListener[] = [];
-    private stats: BeamStats = {
+    config: BeamConfig | null = null;
+    crypto: BeamCrypto | null = null;
+    ws: WebSocket | null = null;
+    state: BeamState = BeamState.IDLE;
+    listeners: BeamListener[] = [];
+    stats: BeamStats = {
         state: BeamState.IDLE,
         latency: 0,
         connectedSince: null,
@@ -101,10 +102,10 @@ export class NeuroBeam {
         messagesSent: 0,
         messagesReceived: 0,
     };
-    private reconnectDelay = 1000;
-    private reconnectTimer: NodeJS.Timeout | null = null;
-    private pingInterval: NodeJS.Timeout | null = null;
-    private pendingRequests = new Map<string, {
+    reconnectDelay = 1000;
+    reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    pingInterval: ReturnType<typeof setInterval> | null = null;
+    pendingRequests = new Map<string, {
         resolve: (data: any) => void;
         reject: (error: Error) => void;
     }>();
@@ -182,11 +183,18 @@ export class NeuroBeam {
             this.ws.close();
             this.ws = null;
         }
+
+        // Reject all pending requests to prevent memory leaks
+        for (const [id, pending] of this.pendingRequests) {
+            pending.reject(new Error('Beam disconnected'));
+        }
+        this.pendingRequests.clear();
+
         this.setState(BeamState.IDLE);
         this.stats.connectedSince = null;
     }
 
-    private async handleMessage(envelope: { c: string; n: string; t: string }): Promise<void> {
+    async handleMessage(envelope: { c: string; n: string; t: string }): Promise<void> {
         try {
             const decrypted = await this.crypto!.decrypt(envelope);
             const message = JSON.parse(decrypted);
@@ -216,20 +224,20 @@ export class NeuroBeam {
         }
     }
 
-    private handleDisconnect(): void {
+    handleDisconnect(): void {
         if (this.state === BeamState.LOCKED) {
             this.setState(BeamState.INTERRUPTED);
             this.scheduleReconnect();
         }
     }
 
-    private handleError(error: Error): void {
+    handleError(error: Error): void {
         this.stats.lastError = error.message;
         this.setState(BeamState.ERROR);
         this.notifyListeners();
     }
 
-    private scheduleReconnect(): void {
+    scheduleReconnect(): void {
         if (this.reconnectTimer) return;
 
         this.reconnectTimer = setTimeout(async () => {
@@ -248,7 +256,7 @@ export class NeuroBeam {
 
     // ─── Ping/Heartbeat ────────────────────────────────────────
 
-    private startPing(): void {
+    startPing(): void {
         this.pingInterval = setInterval(async () => {
             if (this.state === BeamState.LOCKED) {
                 try {
@@ -260,7 +268,7 @@ export class NeuroBeam {
         }, 10000); // Every 10 seconds
     }
 
-    private stopPing(): void {
+    stopPing(): void {
         if (this.pingInterval) {
             clearInterval(this.pingInterval);
             this.pingInterval = null;
@@ -269,7 +277,7 @@ export class NeuroBeam {
 
     // ─── Messaging ─────────────────────────────────────────────
 
-    private async send(payload: any): Promise<void> {
+    async send(payload: any): Promise<void> {
         if (!this.ws || this.state !== BeamState.LOCKED) {
             throw new Error('Beam not locked');
         }
@@ -314,7 +322,7 @@ export class NeuroBeam {
 
     // ─── State & Listeners ─────────────────────────────────────
 
-    private setState(newState: BeamState): void {
+    setState(newState: BeamState): void {
         this.state = newState;
         this.stats.state = newState;
         this.notifyListeners();
@@ -331,7 +339,7 @@ export class NeuroBeam {
         };
     }
 
-    private notifyListeners(): void {
+    notifyListeners(): void {
         this.listeners.forEach((listener) => listener(this.getStats()));
     }
 }
