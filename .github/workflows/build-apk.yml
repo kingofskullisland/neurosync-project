@@ -22,9 +22,7 @@ jobs:
       - uses: android-actions/setup-android@v3
       - run: npm ci
       - run: npx expo prebuild --platform android --clean
-      - name: Bundle JS
-        run: npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
-      - name: Build APK
+      - name: Build standalone APK
         working-directory: android
         run: |
           chmod +x gradlew
