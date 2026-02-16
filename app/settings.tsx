@@ -8,6 +8,7 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     LayoutAnimation,
+    Modal,
     Platform,
     Pressable,
     ScrollView,
@@ -19,11 +20,11 @@ import {
     ViewStyle
 } from 'react-native';
 import { BeamMonitor } from '../components/BeamMonitor';
+import BeamScanner from '../components/BeamScanner'; // Modified default import
 import { AkiraTitle } from '../components/GlitchText';
 import { ModelMonitor } from '../components/ModelMonitor';
 import { ModelPicker } from '../components/ModelPicker';
 import { NeonButton } from '../components/NeonButton';
-import { QRScanner } from '../components/QRScanner';
 import { StatusPill } from '../components/StatusPill';
 import { checkHealth } from '../lib/api';
 import { FAQ_CATEGORIES, FAQ_DATA, FAQItem } from '../lib/faq';
@@ -148,8 +149,40 @@ export default function SettingsScreen() {
         ]);
     };
 
+    const handleQRScanWrapper = (data: string) => {
+        try {
+            // 1. Try JSON (Full Beam Config)
+            const config: BeamConfig = JSON.parse(data);
+            if (config.host && config.port && config.key) {
+                handleQRScan(config);
+                return;
+            }
+        } catch (e) {
+            // Not JSON, continue
+        }
+
+        // 2. Try Simple URL (http://IP:PORT) from terminal script
+        if (data.startsWith('http')) {
+            // Basic parsing
+            const clean = data.replace(/^https?:\/\//, '');
+            const [host, portStr] = clean.split(':');
+            const port = parseInt(portStr);
+
+            if (host && !isNaN(port)) {
+                updateSetting('pcIp', host);
+                updateSetting('bridgePort', port);
+                Alert.alert('Uplink Targeted', `Target coordinates locked: ${host}:${port}.\n\n(Secure Beam tunnel requires full handshake from Desktop App).`);
+                setShowQRScanner(false);
+                return;
+            }
+        }
+
+        Alert.alert('Scan Failed', 'Unrecognized data format.');
+    };
+
     const handleQRScan = async (config: BeamConfig) => {
         setBeamConfig(config);
+        setShowQRScanner(false);
         try {
             await neurobeam.connect(config);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -531,11 +564,17 @@ export default function SettingsScreen() {
             </View>
 
             {/* QR Scanner Modal */}
-            <QRScanner
+            <Modal
                 visible={showQRScanner}
-                onClose={() => setShowQRScanner(false)}
-                onScan={handleQRScan}
-            />
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setShowQRScanner(false)}
+            >
+                <BeamScanner
+                    onClose={() => setShowQRScanner(false)}
+                    onScan={handleQRScanWrapper}
+                />
+            </Modal>
         </View >
     );
 }
@@ -556,13 +595,15 @@ function MenuSection({
     children: React.ReactNode;
 }) {
     const sectionStyle: ViewStyle = {
-        marginBottom: 10,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: isOpen ? COLORS.BORDER_LIGHT : COLORS.BORDER,
+        marginBottom: 12,
+        borderRadius: 4,
+        borderWidth: 2,
+        borderColor: isOpen ? COLORS.TEAL : COLORS.BORDER,
         backgroundColor: COLORS.CARD,
         overflow: 'hidden',
-        ...(SHADOWS.md as object),
+        borderLeftWidth: 6,
+        borderLeftColor: isOpen ? COLORS.TEAL : COLORS.BORDER_LIGHT,
+        ...(SHADOWS.industrialDepth as object),
     };
 
     return (
@@ -580,11 +621,11 @@ function MenuSection({
                 <Text
                     style={{
                         flex: 1,
-                        color: COLORS.TEXT_BRIGHT,
+                        color: isOpen ? COLORS.TEAL : COLORS.TEXT_BRIGHT,
                         fontFamily: 'monospace',
-                        fontSize: 13,
-                        fontWeight: '700',
-                        letterSpacing: 1.5,
+                        fontSize: 14,
+                        fontWeight: '900',
+                        letterSpacing: 2,
                     }}
                 >
                     {title}
@@ -594,8 +635,9 @@ function MenuSection({
             {isOpen && (
                 <View
                     style={{
-                        padding: 14,
-                        borderTopWidth: 1,
+                        padding: 16,
+                        backgroundColor: COLORS.PANEL,
+                        borderTopWidth: 2,
                         borderTopColor: COLORS.BORDER,
                     }}
                 >
@@ -638,16 +680,16 @@ function InputField({
             </Text>
             <TextInput
                 style={{
-                    backgroundColor: COLORS.SURFACE,
-                    borderWidth: 1,
+                    backgroundColor: COLORS.BG,
+                    borderWidth: 2,
                     borderColor: COLORS.BORDER,
-                    borderRadius: 6,
+                    borderRadius: 2,
                     paddingHorizontal: 12,
-                    paddingVertical: 10,
-                    color: COLORS.TEXT_BRIGHT,
+                    paddingVertical: 12,
+                    color: COLORS.TEAL,
                     fontFamily: 'monospace',
-                    fontSize: 13,
-                    ...(SHADOWS.sm as object),
+                    fontSize: 14,
+                    fontWeight: '700',
                 }}
                 value={value}
                 onChangeText={onChangeText}

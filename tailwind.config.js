@@ -5,12 +5,14 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Adeptus Mechanicus Palette
+        // Adeptus Mechanicus Palette (Refined Contrast)
         'mechanicus-green': '#00ff41',
-        'mechanicus-red': '#ff4500',
-        'mechanicus-dark': '#0d0f0d',
-        'mechanicus-plate': '#2d382d',
-        'mechanicus-gold': '#ffd700', // For ornamental details
+        'mechanicus-red': '#C41E3A',
+        'mechanicus-dark': '#080908',
+        'mechanicus-plate': '#2D382D',
+        'mechanicus-iron': '#1E231E',
+        'mechanicus-gold': '#FFB900',
+        'mechanicus-brass': '#8B652E',
 
         // Legacy/Akira support (mapping to new theme where appropriate or keeping for compat)
         'akira-bg': '#0d0f0d', // Mapped to dark

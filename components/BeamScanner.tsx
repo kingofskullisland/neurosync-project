@@ -7,7 +7,12 @@ import { handleBeamAction } from '../utils/BeamHandler';
 
 const BACKEND_VERIFY_URL = 'http://192.168.1.50:8000'; // Update to your desktop IP
 
-export default function BeamScanner({ onClose }: { onClose?: () => void }) {
+interface BeamScannerProps {
+    onClose?: () => void;
+    onScan?: (data: string) => void;
+}
+
+export default function BeamScanner({ onClose, onScan }: BeamScannerProps) {
     const [permission, requestPermission] = useCameraPermissions();
     const [scanning, setScanning] = useState(true);
     const [verifying, setVerifying] = useState(false);
@@ -94,6 +99,15 @@ export default function BeamScanner({ onClose }: { onClose?: () => void }) {
 
         processingRef.current = true;
         setScanning(false);
+
+        // If external handler is provided, use it
+        if (onScan) {
+            onScan(data);
+            // Call onClose if provided, but let parent handle logic.
+            // Actually, usually parent closes modal.
+            if (onClose) onClose();
+            return;
+        }
 
         // Check if this is a "tether" type beam (has base64 payload in ?p= param)
         if (data.includes('beam?p=')) {

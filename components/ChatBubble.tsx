@@ -75,11 +75,11 @@ export function ChatBubble({ role, content, route, timestamp, model }: ChatBubbl
         borderWidth: 1,
         borderLeftWidth: isUser ? 1 : 3,
         borderRightWidth: isUser ? 3 : 1,
-        borderColor: isUser ? COLORS.RED + '50' : COLORS.GREEN + '50',
-        borderLeftColor: isUser ? (COLORS.RED + '50') : COLORS.GREEN,
-        borderRightColor: isUser ? COLORS.RED : (COLORS.GREEN + '50'),
+        borderColor: isUser ? COLORS.RED : COLORS.GREEN,
+        borderLeftColor: isUser ? (COLORS.RED + '40') : COLORS.GREEN,
+        borderRightColor: isUser ? COLORS.RED : (COLORS.GREEN + '40'),
         backgroundColor: isUser ? COLORS.CARD : COLORS.PANEL,
-        ...(isUser ? (SHADOWS.md as object) : (SHADOWS.cathodeGlow as object)),
+        ...(isUser ? (SHADOWS.industrialDepth as object) : (SHADOWS.cathodeGlow as object)),
     };
 
     return (
@@ -110,15 +110,18 @@ export function ChatBubble({ role, content, route, timestamp, model }: ChatBubbl
                 >
                     <Text
                         style={{
-                            fontSize: 10,
+                            fontSize: 11,
                             fontFamily: 'monospace',
-                            fontWeight: '700',
+                            fontWeight: '900',
                             textTransform: 'uppercase',
-                            letterSpacing: 1.5,
-                            color: isUser ? COLORS.RED : COLORS.GREEN,
+                            letterSpacing: 2,
+                            color: isUser ? COLORS.RED : COLORS.TEAL,
+                            textShadowColor: isUser ? COLORS.RED + '40' : COLORS.TEAL + '40',
+                            textShadowOffset: { width: 0, height: 0 },
+                            textShadowRadius: 4,
                         }}
                     >
-                        {isUser ? 'OPERATOR' : 'SERVITOR-PRIME [COGITATOR]'}
+                        {isUser ? 'OPERATOR' : 'HADRON OMEGA-7-7 [ULTIMA ADAPTOR]'}
                     </Text>
                     {route && !isUser && <RouteBadge route={route} />}
                 </View>

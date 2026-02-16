@@ -9,7 +9,7 @@ set -e  # Exit on error
 
 PORT=8082
 PYTHON_CMD="python3"
-APP_MODULE="app.main"
+APP_MODULE="memory.server:app"
 
 echo "🚀 NeuroSync Router - Dev Startup"
 echo "=================================="

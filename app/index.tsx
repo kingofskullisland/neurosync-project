@@ -202,6 +202,7 @@ export default function ChatScreen() {
 
         {/* HEADER: Servo Skull & Title */}
         <View className="pt-4 px-4 border-b-2 border-mechanicus-plate bg-mechanicus-dark pb-4 z-10 w-full relative">
+          <View className="absolute top-0 left-0 right-0 h-1 hazard-stripe" />
 
           {/* Purity Seal for Tethered Mode */}
           {inferenceMode === 'tethered' && <PuritySeal />}
@@ -219,7 +220,7 @@ export default function ChatScreen() {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   setIsScanning(true);
                 }}
-                className="p-2 border border-mechanicus-plate bg-mechanicus-dark active:bg-mechanicus-plate"
+                className="p-2 border-2 border-mechanicus-green bg-mechanicus-green/10 active:bg-mechanicus-green/40 rounded-sm"
               >
                 <Text className="text-mechanicus-green text-lg">⚡</Text>
               </Pressable>
@@ -228,7 +229,7 @@ export default function ChatScreen() {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   router.push('/history');
                 }}
-                className="p-2 border border-mechanicus-plate bg-mechanicus-dark active:bg-mechanicus-plate"
+                className="p-2 border-2 border-mechanicus-brass/50 bg-mechanicus-brass/10 active:bg-mechanicus-brass/40 rounded-sm"
               >
                 <Text className="text-mechanicus-green text-lg">📋</Text>
               </Pressable>
@@ -237,7 +238,7 @@ export default function ChatScreen() {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   router.push('/settings');
                 }}
-                className="p-2 border border-mechanicus-plate bg-mechanicus-dark active:bg-mechanicus-plate"
+                className="p-2 border-2 border-mechanicus-gold/50 bg-mechanicus-gold/10 active:bg-mechanicus-gold/40 rounded-sm"
               >
                 <Text className="text-mechanicus-green text-lg">⚙️</Text>
               </Pressable>
@@ -267,7 +268,7 @@ export default function ChatScreen() {
               [SYSTEM_BOOT_COMPLETE]
             </Text>
             <Text className="text-mechanicus-green font-mono text-center text-xs opacity-60">
-              "There is no strength in flesh, only weakness."
+              &quot;There is no strength in flesh, only weakness.&quot;
             </Text>
             <View className="w-12 h-1 bg-mechanicus-green mt-4 mb-4" />
             <Text className="text-mechanicus-green font-mono text-center text-xs">
@@ -304,11 +305,11 @@ export default function ChatScreen() {
         )}
 
         {/* INPUT AREA */}
-        <View className={`border-t-2 border-mechanicus-plate bg-mechanicus-dark p-2 ${keyboardVisible ? 'pb-2' : 'pb-6'}`}>
+        <View className={`border-t-2 border-mechanicus-plate bg-mechanicus-iron p-3 ${keyboardVisible ? 'pb-3' : 'pb-8'}`}>
           <View className="flex-row items-end space-x-2">
             <TextInput
               ref={inputRef}
-              className="flex-1 bg-mechanicus-dark border border-mechanicus-plate text-mechanicus-green font-mono p-3 text-sm min-h-[48px]"
+              className="flex-1 bg-mechanicus-dark border-2 border-mechanicus-plate text-mechanicus-green font-mono p-3 text-sm min-h-[52px] etched-inset"
               value={input}
               onChangeText={setInput}
               placeholder="Input Directive..."

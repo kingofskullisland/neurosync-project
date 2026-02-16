@@ -3,32 +3,20 @@
 @tailwind utilities;
 
 @layer utilities {
-  /* CRT Scanline Overlay */
+
+  /* CRT Scanline Overlay — visual effect applied via RN components, not CSS gradients */
   .crt-overlay {
-    background: linear-gradient(
-        rgba(18, 16, 16, 0) 50%,
-        rgba(0, 0, 0, 0.25) 50%
-      ),
-      linear-gradient(
-        90deg,
-        rgba(255, 0, 0, 0.06),
-        rgba(0, 255, 0, 0.02),
-        rgba(0, 0, 255, 0.06)
-      );
-    background-size: 100% 3px, 3px 100%;
-    pointer-events: none;
+    opacity: 0.95;
   }
 
   /* Phosphor Ghosting/Glow */
   .phosphor-text {
     color: #00ff41;
-    text-shadow: 0 0 5px rgba(0, 255, 65, 0.6);
   }
 
   /* Red Alert Glow */
   .alert-text {
     color: #ff4500;
-    text-shadow: 0 0 5px rgba(255, 69, 0, 0.8);
   }
 
   /* Heavy Industrial Border */
@@ -36,6 +24,28 @@
     border-color: #2d382d;
     border-width: 2px;
     border-top-width: 8px;
+    border-style: solid;
+  }
+
+  /* Worn Industrial Panel */
+  .industrial-panel {
+    background-color: #121412;
+    border-width: 1px;
+    border-color: #435043;
+    border-left-width: 4px;
+    border-left-color: #8BA38B;
+  }
+
+  /* Hazard Stripe Detail — uses solid gold on RN (gradient applied via component if needed) */
+  .hazard-stripe {
+    background-color: #FFB900;
+  }
+
+  /* Etched Inset */
+  .etched-inset {
+    background-color: #080908;
+    border-width: 1px;
+    border-color: #1E231E;
   }
 }
 

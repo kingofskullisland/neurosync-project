@@ -51,7 +51,7 @@ if [ -z "$IP" ]; then
 fi
 
 # Port configuration (default: 8000)
-PORT="${NEUROBEAM_PORT:-8000}"
+PORT="${NEUROBEAM_PORT:-8080}"
 URL="http://$IP:$PORT"
 
 # Display header

@@ -65,6 +65,7 @@ const NetworkStatus = React.memo(({ isVpnActive, onToggle }: { isVpnActive: bool
         <Text style={styles.vpnText}>{isVpnActive ? 'CLOUD' : 'LOCAL'}</Text>
     </Pressable>
 ));
+NetworkStatus.displayName = 'NetworkStatus';
 
 // ─── Chat Bubble ─────────────────────────────────────────────────
 const MessageBubble = React.memo(({ item, vpnActive }: { item: ChatMessage; vpnActive: boolean }) => {
@@ -112,6 +113,7 @@ const MessageBubble = React.memo(({ item, vpnActive }: { item: ChatMessage; vpnA
         </View>
     );
 });
+MessageBubble.displayName = 'MessageBubble';
 
 // ─── Main Screen ─────────────────────────────────────────────────
 export default function MemoryChatScreen() {
