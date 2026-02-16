@@ -44,7 +44,12 @@ export default function BeamScanner({ onClose }: { onClose?: () => void }) {
             // We should probably just parse it on client if it's a simple tether.
             // But the code provided uses `verifyBeamWithServer`.
 
-            const response = await fetch(`${BACKEND_VERIFY_URL}/beam/verify`, {
+            // Dynamic Verification: Use the scanned host if possible, or fallback
+            // If scannedUrl is a full URL, we might want to use its origin
+            const verifyUrl = scannedUrl.startsWith('http') ? scannedUrl : BACKEND_VERIFY_URL;
+            const endpoint = `${verifyUrl}/beam/verify`.replace('//beam', '/beam'); // Avoid double slashes if present
+
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ payload: p, signature: sig }),
@@ -82,8 +87,8 @@ export default function BeamScanner({ onClose }: { onClose?: () => void }) {
     const handleBarcodeScanned = ({ data }: { data: string }) => {
         if (processingRef.current) return;
 
-        // Only process noosphere:// deep links
-        if (!data.startsWith('noosphere://')) {
+        // Allow both noosphere:// deep links and standard http/https URLs (for QR pairing)
+        if (!data.startsWith('noosphere://') && !data.startsWith('http')) {
             return;
         }
 

@@ -77,7 +77,7 @@ class BeamCrypto {
         const tag = Buffer.from(envelope.t, 'base64');
 
         const decipher = QuickCrypto.createDecipheriv('aes-256-gcm', this.key, iv);
-        decipher.setAuthTag(tag);
+        decipher.setAuthTag(tag as any);
 
         let decrypted = decipher.update(envelope.c, 'base64', 'utf8');
         decrypted += decipher.final('utf8');
