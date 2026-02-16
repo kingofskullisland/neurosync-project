@@ -15,9 +15,18 @@
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
         "BATTERY_STATS"
-      ]
+      ],
+      "usesCleartextTraffic": true
     },
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
       [
         "expo-build-properties",
         {
