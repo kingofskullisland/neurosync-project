@@ -54,3 +54,5 @@ v*.txt
 !.env.example
 backend.log
 mobile_bridge.log
+*.apk
+*.aab
