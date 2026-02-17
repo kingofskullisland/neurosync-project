@@ -1,0 +1,79 @@
+nohup: ignoring input
+🚀 NeuroSync Router - Dev Startup
+==================================
+⚠️  Port 8082 is in use
+🔪 Killing process 133442 on port 8082...
+⏳ Waiting for socket to release...
+✅ Port 8082 is now free
+
+🔧 Starting Python application...
+   Command: python3 -m app.main
+
+INFO:     Started server process [134283]
+INFO:     Waiting for application startup.
+INFO:app.main:NeuroSync Router starting...
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:app.main:Backend status: {'gemini': False, 'claude': False, 'ollama': True}
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8082 (Press CTRL+C to quit)
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:55380 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:55384 - "GET /models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55388 - "GET /score?query=What+is+2%2B2%3F HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55388 - "GET /score?query=Explain+quantum+entanglement+in+detail HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55388 - "GET /score?query=Show+me+a+picture+of+a+cat HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:55400 - "POST /chat HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:47522 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:47538 - "GET /models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47550 - "GET /score?query=What+is+2%2B2%3F HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47550 - "GET /score?query=Explain+quantum+entanglement+in+detail HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47550 - "GET /score?query=Show+me+a+picture+of+a+cat HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:47556 - "POST /chat HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:59018 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:59032 - "GET /models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59046 - "GET /score?query=What+is+2%2B2%3F HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59046 - "GET /score?query=Explain+quantum+entanglement+in+detail HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59046 - "GET /score?query=Show+me+a+picture+of+a+cat HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:59048 - "POST /chat HTTP/1.1" 200 OK
+INFO:     192.168.1.207:33112 - "GET / HTTP/1.1" 404 Not Found
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     100.125.214.98:38874 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     100.125.214.98:49530 - "GET /models HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     100.125.214.98:50984 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     100.125.214.98:34802 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     100.125.214.98:34802 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     100.125.214.98:47032 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     100.125.214.98:59746 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     100.125.214.98:43050 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     100.125.214.98:51236 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     100.125.214.98:37708 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     100.125.214.98:37708 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     100.125.214.98:52422 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     100.125.214.98:39776 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     100.125.214.98:59112 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     100.125.214.98:45740 - "GET /health HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://localhost:11434/api/tags "HTTP/1.1 200 OK"
+INFO:     100.125.214.98:58696 - "GET /health HTTP/1.1" 200 OK
+./dev-start.sh: line 53: 134283 Killed                  $PYTHON_CMD -m $APP_MODULE

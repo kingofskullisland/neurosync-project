@@ -1,0 +1,8 @@
+🚀 NeuroSync Router - Dev Startup
+==================================
+✅ Port 8082 is available
+
+🔧 Starting Python application...
+   Command: python3 -m app.main
+
+/usr/bin/python3: No module named app.main

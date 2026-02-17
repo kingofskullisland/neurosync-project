@@ -24,6 +24,7 @@ export default function RootLayout() {
   }
 
   return (
+<<<<<<< HEAD
     <NoosphereProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
@@ -31,5 +32,13 @@ export default function RootLayout() {
         <Stack.Screen name="history" />
       </Stack>
     </NoosphereProvider>
+=======
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="settings" />
+      <Stack.Screen name="history" />
+      <Stack.Screen name="setup" />
+    </Stack>
+>>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
   );
 }

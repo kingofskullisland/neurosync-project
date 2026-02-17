@@ -75,7 +75,11 @@ export default function HistoryScreen() {
         borderColor: COLORS.BORDER,
         padding: 14,
         marginBottom: 10,
+<<<<<<< HEAD
         ...SHADOWS.md,
+=======
+        ...(SHADOWS.md as object),
+>>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
     };
 
     const renderItem = ({ item }: { item: ChatMeta }) => (
@@ -141,7 +145,11 @@ export default function HistoryScreen() {
                     borderBottomColor: COLORS.BORDER,
                     flexDirection: 'row',
                     alignItems: 'center',
+<<<<<<< HEAD
                     ...SHADOWS.md,
+=======
+                    ...(SHADOWS.md as object),
+>>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
                 }}
             >
                 <Pressable
@@ -153,7 +161,11 @@ export default function HistoryScreen() {
                         borderWidth: 1,
                         borderColor: COLORS.BORDER,
                         marginRight: 12,
+<<<<<<< HEAD
                         ...SHADOWS.sm,
+=======
+                        ...(SHADOWS.sm as object),
+>>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
                     }}
                 >
                     <Text style={{ color: COLORS.BLUE, fontSize: 16, fontWeight: '700' }}>←</Text>

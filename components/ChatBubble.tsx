@@ -16,9 +16,15 @@ interface ChatBubbleProps {
 
 function RouteBadge({ route }: { route: RouteTarget }) {
     const config: Record<RouteTarget, { bg: string; border: string; text: string }> = {
+<<<<<<< HEAD
         LOCAL: { bg: '#00ff4118', border: COLORS.GREEN, text: COLORS.GREEN }, // Mechanicus Green
         PC: { bg: '#ffd70018', border: COLORS.GOLD, text: COLORS.GOLD },       // Mechanicus Gold
         CLOUD: { bg: '#ff450018', border: COLORS.RED, text: COLORS.RED },      // Mechanicus Red
+=======
+        LOCAL: { bg: '#22c55e18', border: COLORS.GREEN, text: COLORS.GREEN },
+        PC: { bg: '#38bdf818', border: COLORS.BLUE, text: COLORS.BLUE },
+        CLOUD: { bg: '#e6394618', border: COLORS.RED, text: COLORS.RED },
+>>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
     };
     const c = config[route];
 
@@ -75,11 +81,19 @@ export function ChatBubble({ role, content, route, timestamp, model }: ChatBubbl
         borderWidth: 1,
         borderLeftWidth: isUser ? 1 : 3,
         borderRightWidth: isUser ? 3 : 1,
+<<<<<<< HEAD
         borderColor: isUser ? COLORS.RED : COLORS.GREEN,
         borderLeftColor: isUser ? (COLORS.RED + '40') : COLORS.GREEN,
         borderRightColor: isUser ? COLORS.RED : (COLORS.GREEN + '40'),
         backgroundColor: isUser ? COLORS.CARD : COLORS.PANEL,
         ...(isUser ? SHADOWS.industrialDepth : SHADOWS.cathodeGlow),
+=======
+        borderColor: isUser ? COLORS.RED + '50' : COLORS.TEAL + '50',
+        borderLeftColor: isUser ? (COLORS.RED + '50') : COLORS.TEAL,
+        borderRightColor: isUser ? COLORS.RED : (COLORS.TEAL + '50'),
+        backgroundColor: isUser ? COLORS.CARD : COLORS.PANEL,
+        ...(isUser ? (SHADOWS.md as object) : (SHADOWS.cathodeGlow as object)),
+>>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
     };
 
     return (
@@ -110,6 +124,7 @@ export function ChatBubble({ role, content, route, timestamp, model }: ChatBubbl
                 >
                     <Text
                         style={{
+<<<<<<< HEAD
                             fontSize: 11,
                             fontFamily: 'monospace',
                             fontWeight: '900',
@@ -122,6 +137,17 @@ export function ChatBubble({ role, content, route, timestamp, model }: ChatBubbl
                         }}
                     >
                         {isUser ? 'OPERATOR' : 'HADRON OMEGA-7-7 [ULTIMA ADAPTOR]'}
+=======
+                            fontSize: 10,
+                            fontFamily: 'monospace',
+                            fontWeight: '700',
+                            textTransform: 'uppercase',
+                            letterSpacing: 1.5,
+                            color: isUser ? COLORS.RED : COLORS.TEAL,
+                        }}
+                    >
+                        {isUser ? 'OPERATOR' : 'SERVITOR-PRIME [COGITATOR]'}
+>>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
                     </Text>
                     {route && !isUser && <RouteBadge route={route} />}
                 </View>
