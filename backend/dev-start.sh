@@ -8,7 +8,6 @@
 set -e  # Exit on error
 
 PORT=8082
-PYTHON_CMD="python3"
 APP_MODULE="memory.server:app"
 
 echo "🚀 NeuroSync Router - Dev Startup"
@@ -64,7 +63,7 @@ main() {
     
     echo ""
     echo "🔧 Starting Python application..."
-    echo "   Command: $PYTHON_CMD -m $APP_MODULE"
+    echo "   Command: uvicorn $APP_MODULE --host 0.0.0.0 --port $PORT --reload"
     echo ""
     
     # Vulkan / ROCm Optimizations for RX 6800 XT
@@ -72,7 +71,7 @@ main() {
     export HSA_OVERRIDE_GFX_VERSION=10.3.0
     
     # Start the application
-    $PYTHON_CMD -m $APP_MODULE
+    uvicorn $APP_MODULE --host 0.0.0.0 --port $PORT --reload
 }
 
 # Trap Ctrl+C to cleanup

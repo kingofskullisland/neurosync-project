@@ -29,13 +29,6 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="history" />
-        <Stack.Screen
-          name="modal"
-          options={{
-            presentation: 'modal',
-            animation: 'fade_from_bottom'
-          }}
-        />
       </Stack>
     </NoosphereProvider>
   );

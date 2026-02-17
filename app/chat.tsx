@@ -3,7 +3,7 @@
  * RAG-powered chat with camera/audio upload and token streaming.
  * Connects to the Memory Server backend for semantic search and AI responses.
  */
-import { Audio } from 'expo-av';
+import type { Audio as AudioType } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
@@ -22,6 +22,13 @@ import {
     TextInput,
     View,
 } from 'react-native';
+
+let Audio: typeof AudioType | null = null;
+try {
+    Audio = require('expo-av').Audio;
+} catch (e) {
+    console.warn('Native expo-av module not found. Audio recording functionality will be disabled.');
+}
 
 // ─── Configuration ───────────────────────────────────────────────
 // Replace with your PC's LAN IP address
@@ -121,7 +128,7 @@ export default function MemoryChatScreen() {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
-    const [recording, setRecording] = useState<Audio.Recording | null>(null);
+    const [recording, setRecording] = useState<any | null>(null);
     const [vpnActive, setVpnActive] = useState(false);  // Manual override toggle
     const flatListRef = useRef<FlatList>(null);
 
@@ -271,6 +278,11 @@ export default function MemoryChatScreen() {
 
     // ── Audio Recording ──────────────────────────────────────────
     const startRecording = async () => {
+        if (!Audio) {
+            Alert.alert('System Limitation', 'Audio recording is not supported on this device/environment.');
+            return;
+        }
+
         try {
             const { status } = await Audio.requestPermissionsAsync();
             if (status !== 'granted') {

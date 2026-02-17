@@ -1,5 +1,12 @@
 import { Buffer } from 'buffer';
-import QuickCrypto from 'react-native-quick-crypto';
+
+let QuickCrypto: any;
+try {
+    QuickCrypto = require('react-native-quick-crypto').default || require('react-native-quick-crypto');
+} catch (e) {
+    console.warn('Native QuickCrypto module not found. Secure Beam functionality will be restricted.');
+    QuickCrypto = null;
+}
 
 // Polyfill for React Native if needed, though usually handled at entry
 if (typeof global.Buffer === 'undefined') {
@@ -18,6 +25,10 @@ export class BeamCrypto {
     }
 
     async encrypt(plaintext: string): Promise<{ c: string; n: string; t: string }> {
+        if (!QuickCrypto) {
+            throw new Error('QuickCrypto native module is not available in this environment.');
+        }
+
         // GCM IV is typically 12 bytes
         const iv = QuickCrypto.randomBytes(12);
 
@@ -36,6 +47,10 @@ export class BeamCrypto {
     }
 
     async decrypt(envelope: { c: string; n: string; t: string }): Promise<string> {
+        if (!QuickCrypto) {
+            throw new Error('QuickCrypto native module is not available in this environment.');
+        }
+
         const iv = Buffer.from(envelope.n, 'base64');
         const tag = Buffer.from(envelope.t, 'base64');
 
