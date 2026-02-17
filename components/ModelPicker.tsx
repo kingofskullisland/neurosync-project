@@ -58,11 +58,7 @@ export function ModelPicker({ serverIp, selectedModel, onSelectModel }: ModelPic
         borderWidth: 1,
         borderColor: COLORS.BORDER,
         overflow: 'hidden',
-<<<<<<< HEAD
         ...SHADOWS.md,
-=======
-        ...(SHADOWS.md as object),
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
     };
 
     return (

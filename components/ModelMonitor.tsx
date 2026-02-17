@@ -28,11 +28,7 @@ export function ModelMonitor({ modelName, compact = false }: ModelMonitorProps) 
         borderWidth: 1,
         borderColor: COLORS.BORDER,
         padding: compact ? 10 : 14,
-<<<<<<< HEAD
         ...SHADOWS.sm,
-=======
-        ...(SHADOWS.sm as object),
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
     };
 
     const formatTime = (ms: number) => {

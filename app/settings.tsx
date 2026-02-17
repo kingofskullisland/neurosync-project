@@ -8,10 +8,7 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     LayoutAnimation,
-<<<<<<< HEAD
     Modal,
-=======
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
     Platform,
     Pressable,
     ScrollView,
@@ -23,21 +20,14 @@ import {
     ViewStyle
 } from 'react-native';
 import { BeamMonitor } from '../components/BeamMonitor';
-<<<<<<< HEAD
 import BeamScanner from '../components/BeamScanner'; // Modified default import
-=======
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
 import { AkiraTitle } from '../components/GlitchText';
 import { ModelMonitor } from '../components/ModelMonitor';
 import { ModelPicker } from '../components/ModelPicker';
 import { NeonButton } from '../components/NeonButton';
 import { QRScanner } from '../components/QRScanner';
 import { StatusPill } from '../components/StatusPill';
-<<<<<<< HEAD
 import { buildUrl, checkHealth } from '../lib/api';
-=======
-import { checkHealth } from '../lib/api';
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
 import { FAQ_CATEGORIES, FAQ_DATA, FAQItem } from '../lib/faq';
 import { BeamConfig, BeamState, BeamStats, neurobeam } from '../lib/neurobeam';
 import {
@@ -78,23 +68,16 @@ export default function SettingsScreen() {
     const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
     const [chatCount, setChatCount] = useState(0);
     const [hasChanges, setHasChanges] = useState(false);
-<<<<<<< HEAD
     const [settingsLoaded, setSettingsLoaded] = useState(false);
-=======
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
     const [beamStats, setBeamStats] = useState<BeamStats>(neurobeam.getStats());
     const [showQRScanner, setShowQRScanner] = useState(false);
     const [beamConfig, setBeamConfig] = useState<BeamConfig | null>(null);
 
     useEffect(() => {
-<<<<<<< HEAD
         loadSettings().then((s) => {
             setSettings(s);
             setSettingsLoaded(true);
         });
-=======
-        loadSettings().then((s) => setSettings(s));
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
         loadChatIndex().then((chats) => setChatCount(chats.length));
 
         // Subscribe to NeuroBeam updates
@@ -169,25 +152,6 @@ export default function SettingsScreen() {
                 },
             },
         ]);
-<<<<<<< HEAD
-=======
-    };
-
-    const handleQRScan = async (config: BeamConfig) => {
-        setBeamConfig(config);
-        try {
-            await neurobeam.connect(config);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } catch (error: any) {
-            Alert.alert('Connection Failed', error.message);
-        }
-    };
-
-    const handleBeamDisconnect = () => {
-        neurobeam.disconnect();
-        setBeamConfig(null);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
     };
 
     const handleQRScanWrapper = (data: string) => {
@@ -262,11 +226,7 @@ export default function SettingsScreen() {
                     borderBottomColor: COLORS.BORDER,
                     flexDirection: 'row',
                     alignItems: 'center',
-<<<<<<< HEAD
                     ...SHADOWS.md,
-=======
-                    ...(SHADOWS.md as object),
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
                 }}
             >
                 <Pressable
@@ -278,11 +238,7 @@ export default function SettingsScreen() {
                         borderWidth: 1,
                         borderColor: COLORS.BORDER,
                         marginRight: 12,
-<<<<<<< HEAD
                         ...SHADOWS.sm,
-=======
-                        ...(SHADOWS.sm as object),
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
                     }}
                 >
                     <Text style={{ color: COLORS.BLUE, fontSize: 16, fontWeight: '700' }}>←</Text>
@@ -371,7 +327,6 @@ export default function SettingsScreen() {
                     />
                     <View style={{ marginTop: 8 }}>
                         <NeonButton title="TEST UPLINK" onPress={handleTest} loading={testing} variant="blue" icon="⚡" />
-<<<<<<< HEAD
                         <Text style={{
                             marginTop: 8,
                             color: COLORS.TEXT_DIM,
@@ -381,8 +336,6 @@ export default function SettingsScreen() {
                         }}>
                             Target: {buildUrl(settings.vpnIp || settings.pcIp || 'localhost', settings.bridgePort)}
                         </Text>
-=======
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
                     </View>
                 </MenuSection>
 
@@ -454,11 +407,7 @@ export default function SettingsScreen() {
                                         borderWidth: 1.5,
                                         borderColor: active ? COLORS.BLUE : COLORS.BORDER,
                                         backgroundColor: active ? COLORS.BLUE + '18' : COLORS.CARD,
-<<<<<<< HEAD
                                         ...SHADOWS.sm,
-=======
-                                        ...(SHADOWS.sm as object),
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
                                     }}
                                 >
                                     <Text
@@ -628,11 +577,7 @@ export default function SettingsScreen() {
                     backgroundColor: COLORS.PANEL,
                     borderTopWidth: 1,
                     borderTopColor: COLORS.BORDER,
-<<<<<<< HEAD
                     ...SHADOWS.lg,
-=======
-                    ...(SHADOWS.lg as object),
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
                 }}
             >
                 <NeonButton
@@ -644,7 +589,6 @@ export default function SettingsScreen() {
             </View>
 
             {/* QR Scanner Modal */}
-<<<<<<< HEAD
             <Modal
                 visible={showQRScanner}
                 animationType="slide"
@@ -657,14 +601,6 @@ export default function SettingsScreen() {
                 />
             </Modal>
         </View >
-=======
-            <QRScanner
-                visible={showQRScanner}
-                onClose={() => setShowQRScanner(false)}
-                onScan={handleQRScan}
-            />
-        </View>
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
     );
 }
 
@@ -684,7 +620,6 @@ function MenuSection({
     children: React.ReactNode;
 }) {
     const sectionStyle: ViewStyle = {
-<<<<<<< HEAD
         marginBottom: 12,
         borderRadius: 4,
         borderWidth: 2,
@@ -694,15 +629,6 @@ function MenuSection({
         borderLeftWidth: 6,
         borderLeftColor: isOpen ? COLORS.TEAL : COLORS.BORDER_LIGHT,
         ...SHADOWS.industrialDepth,
-=======
-        marginBottom: 10,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: isOpen ? COLORS.BORDER_LIGHT : COLORS.BORDER,
-        backgroundColor: COLORS.CARD,
-        overflow: 'hidden',
-        ...(SHADOWS.md as object),
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
     };
 
     return (
@@ -720,19 +646,11 @@ function MenuSection({
                 <Text
                     style={{
                         flex: 1,
-<<<<<<< HEAD
                         color: isOpen ? COLORS.TEAL : COLORS.TEXT_BRIGHT,
                         fontFamily: 'monospace',
                         fontSize: 14,
                         fontWeight: '900',
                         letterSpacing: 2,
-=======
-                        color: COLORS.TEXT_BRIGHT,
-                        fontFamily: 'monospace',
-                        fontSize: 13,
-                        fontWeight: '700',
-                        letterSpacing: 1.5,
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
                     }}
                 >
                     {title}
@@ -742,14 +660,9 @@ function MenuSection({
             {isOpen && (
                 <View
                     style={{
-<<<<<<< HEAD
                         padding: 16,
                         backgroundColor: COLORS.PANEL,
                         borderTopWidth: 2,
-=======
-                        padding: 14,
-                        borderTopWidth: 1,
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
                         borderTopColor: COLORS.BORDER,
                     }}
                 >
@@ -792,7 +705,6 @@ function InputField({
             </Text>
             <TextInput
                 style={{
-<<<<<<< HEAD
                     backgroundColor: COLORS.BG,
                     borderWidth: 2,
                     borderColor: COLORS.BORDER,
@@ -803,18 +715,6 @@ function InputField({
                     fontFamily: 'monospace',
                     fontSize: 14,
                     fontWeight: '700',
-=======
-                    backgroundColor: COLORS.SURFACE,
-                    borderWidth: 1,
-                    borderColor: COLORS.BORDER,
-                    borderRadius: 6,
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                    color: COLORS.TEXT_BRIGHT,
-                    fontFamily: 'monospace',
-                    fontSize: 13,
-                    ...(SHADOWS.sm as object),
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
                 }}
                 value={value}
                 onChangeText={onChangeText}

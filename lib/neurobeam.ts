@@ -4,10 +4,6 @@
  * AES-256-GCM encrypted WebSocket transport
  */
 import { Buffer } from 'buffer';
-<<<<<<< HEAD
-=======
-import * as Crypto from 'expo-crypto';
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
 
 // Polyfill for React Native
 if (typeof global.Buffer === 'undefined') {
@@ -44,78 +40,17 @@ export interface BeamStats {
 
 type BeamListener = (stats: BeamStats) => void;
 
-<<<<<<< HEAD
 import { BeamCrypto } from './crypto';
-=======
-// ─── Encryption ─────────────────────────────────────────────
-
-/**
- * Simplified AES-256-CTR encryption for React Native
- * Note: Using CTR mode instead of GCM for React Native compatibility
- * Security: Still provides confidentiality, but not authentication
- * TODO: Add HMAC for authentication in production
- */
-class BeamCrypto {
-    private key: Uint8Array;
-
-    constructor(keyBase64: string) {
-        this.key = Buffer.from(keyBase64, 'base64');
-    }
-
-    async encrypt(plaintext: string): Promise<{ c: string; n: string }> {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(plaintext);
-
-        // Generate random 128-bit nonce (IV for CTR mode)
-        const nonce = await Crypto.getRandomBytesAsync(16);
-
-        // Simple XOR-based encryption (placeholder for production AES-CTR)
-        // In production, use a proper crypto library like crypto-js or noble-ciphers
-        const ciphertext = new Uint8Array(data.length);
-        for (let i = 0; i < data.length; i++) {
-            ciphertext[i] = data[i] ^ this.key[i % this.key.length] ^ nonce[i % nonce.length];
-        }
-
-        return {
-            c: Buffer.from(ciphertext).toString('base64'),
-            n: Buffer.from(nonce).toString('base64'),
-        };
-    }
-
-    async decrypt(envelope: { c: string; n: string }): Promise<string> {
-        const ciphertext = Buffer.from(envelope.c, 'base64');
-        const nonce = Buffer.from(envelope.n, 'base64');
-
-        // Simple XOR-based decryption (same as encryption for XOR)
-        const plaintext = new Uint8Array(ciphertext.length);
-        for (let i = 0; i < ciphertext.length; i++) {
-            plaintext[i] = ciphertext[i] ^ this.key[i % this.key.length] ^ nonce[i % nonce.length];
-        }
-
-        const decoder = new TextDecoder();
-        return decoder.decode(plaintext);
-    }
-}
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
 
 // ─── NeuroBeam Client ───────────────────────────────────────
 
 export class NeuroBeam {
-<<<<<<< HEAD
     config: BeamConfig | null = null;
     crypto: BeamCrypto | null = null;
     ws: WebSocket | null = null;
     state: BeamState = BeamState.IDLE;
     listeners: BeamListener[] = [];
     stats: BeamStats = {
-=======
-    private config: BeamConfig | null = null;
-    private crypto: BeamCrypto | null = null;
-    private ws: WebSocket | null = null;
-    private state: BeamState = BeamState.IDLE;
-    private listeners: BeamListener[] = [];
-    private stats: BeamStats = {
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
         state: BeamState.IDLE,
         latency: 0,
         connectedSince: null,
@@ -123,17 +58,10 @@ export class NeuroBeam {
         messagesSent: 0,
         messagesReceived: 0,
     };
-<<<<<<< HEAD
     reconnectDelay = 1000;
     reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     pingInterval: ReturnType<typeof setInterval> | null = null;
     pendingRequests = new Map<string, {
-=======
-    private reconnectDelay = 1000;
-    private reconnectTimer: NodeJS.Timeout | null = null;
-    private pingInterval: NodeJS.Timeout | null = null;
-    private pendingRequests = new Map<string, {
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
         resolve: (data: any) => void;
         reject: (error: Error) => void;
     }>();
@@ -211,7 +139,6 @@ export class NeuroBeam {
             this.ws.close();
             this.ws = null;
         }
-<<<<<<< HEAD
 
         // Reject all pending requests to prevent memory leaks
         for (const [id, pending] of this.pendingRequests) {
@@ -219,17 +146,11 @@ export class NeuroBeam {
         }
         this.pendingRequests.clear();
 
-=======
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
         this.setState(BeamState.IDLE);
         this.stats.connectedSince = null;
     }
 
-<<<<<<< HEAD
     async handleMessage(envelope: { c: string; n: string; t: string }): Promise<void> {
-=======
-    private async handleMessage(envelope: { c: string; n: string }): Promise<void> {
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
         try {
             const decrypted = await this.crypto!.decrypt(envelope);
             const message = JSON.parse(decrypted);
@@ -259,32 +180,20 @@ export class NeuroBeam {
         }
     }
 
-<<<<<<< HEAD
     handleDisconnect(): void {
-=======
-    private handleDisconnect(): void {
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
         if (this.state === BeamState.LOCKED) {
             this.setState(BeamState.INTERRUPTED);
             this.scheduleReconnect();
         }
     }
 
-<<<<<<< HEAD
     handleError(error: Error): void {
-=======
-    private handleError(error: Error): void {
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
         this.stats.lastError = error.message;
         this.setState(BeamState.ERROR);
         this.notifyListeners();
     }
 
-<<<<<<< HEAD
     scheduleReconnect(): void {
-=======
-    private scheduleReconnect(): void {
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
         if (this.reconnectTimer) return;
 
         this.reconnectTimer = setTimeout(async () => {
@@ -303,11 +212,7 @@ export class NeuroBeam {
 
     // ─── Ping/Heartbeat ────────────────────────────────────────
 
-<<<<<<< HEAD
     startPing(): void {
-=======
-    private startPing(): void {
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
         this.pingInterval = setInterval(async () => {
             if (this.state === BeamState.LOCKED) {
                 try {
@@ -319,11 +224,7 @@ export class NeuroBeam {
         }, 10000); // Every 10 seconds
     }
 
-<<<<<<< HEAD
     stopPing(): void {
-=======
-    private stopPing(): void {
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
         if (this.pingInterval) {
             clearInterval(this.pingInterval);
             this.pingInterval = null;
@@ -332,11 +233,7 @@ export class NeuroBeam {
 
     // ─── Messaging ─────────────────────────────────────────────
 
-<<<<<<< HEAD
     async send(payload: any): Promise<void> {
-=======
-    private async send(payload: any): Promise<void> {
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
         if (!this.ws || this.state !== BeamState.LOCKED) {
             throw new Error('Beam not locked');
         }
@@ -381,11 +278,7 @@ export class NeuroBeam {
 
     // ─── State & Listeners ─────────────────────────────────────
 
-<<<<<<< HEAD
     setState(newState: BeamState): void {
-=======
-    private setState(newState: BeamState): void {
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
         this.state = newState;
         this.stats.state = newState;
         this.notifyListeners();
@@ -402,11 +295,7 @@ export class NeuroBeam {
         };
     }
 
-<<<<<<< HEAD
     notifyListeners(): void {
-=======
-    private notifyListeners(): void {
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
         this.listeners.forEach((listener) => listener(this.getStats()));
     }
 }
