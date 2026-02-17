@@ -26,7 +26,7 @@ import { ModelMonitor } from '../components/ModelMonitor';
 import { ModelPicker } from '../components/ModelPicker';
 import { NeonButton } from '../components/NeonButton';
 import { StatusPill } from '../components/StatusPill';
-import { checkHealth } from '../lib/api';
+import { buildUrl, checkHealth } from '../lib/api';
 import { FAQ_CATEGORIES, FAQ_DATA, FAQItem } from '../lib/faq';
 import { BeamConfig, BeamState, BeamStats, neurobeam } from '../lib/neurobeam';
 import {
@@ -311,6 +311,15 @@ export default function SettingsScreen() {
                     />
                     <View style={{ marginTop: 8 }}>
                         <NeonButton title="TEST UPLINK" onPress={handleTest} loading={testing} variant="blue" icon="⚡" />
+                        <Text style={{
+                            marginTop: 8,
+                            color: COLORS.TEXT_DIM,
+                            fontFamily: 'monospace',
+                            fontSize: 10,
+                            textAlign: 'center'
+                        }}>
+                            Target: {buildUrl(settings.vpnIp || settings.pcIp || 'localhost', settings.bridgePort)}
+                        </Text>
                     </View>
                 </MenuSection>
 

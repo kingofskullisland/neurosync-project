@@ -70,9 +70,19 @@ async function fetchWithTimeout(
 
 /**
  * Build URL from IP address
+ * Handles cases where user enters protocol, port, or path
  */
-function buildUrl(ip: string, port: number = BRIDGE_PORT): string {
-    const cleanIp = ip.replace(/^https?:\/\//, '').replace(/:\d+$/, '');
+export function buildUrl(ip: string, port: number = BRIDGE_PORT): string {
+    let cleanIp = ip.trim();
+    // Remove protocol
+    cleanIp = cleanIp.replace(/^https?:\/\//, '');
+    // Remove trailing path
+    cleanIp = cleanIp.split('/')[0];
+    // Remove existing port to ensure we use the correct bridge port
+    cleanIp = cleanIp.replace(/:\d+$/, '');
+
+    if (!cleanIp) return `http://localhost:${port}`;
+
     return `http://${cleanIp}:${port}`;
 }
 

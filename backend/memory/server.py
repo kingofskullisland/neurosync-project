@@ -51,6 +51,7 @@ app.add_middleware(
     allow_origin_regex=(
         r"https?://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}"
         r"|10\.\d{1,3}\.\d{1,3}\.\d{1,3}"
+        r"|100\.\d{1,3}\.\d{1,3}\.\d{1,3}"  # Tailscale
         r"|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?"
     ),
     allow_credentials=True,
