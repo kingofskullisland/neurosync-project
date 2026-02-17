@@ -2,7 +2,7 @@
  * NeuroSync — Akira Theme Constants
  * Inspired by Akira (1988) anime aesthetic
  */
-import { Platform } from 'react-native';
+import { Platform, ViewStyle } from 'react-native';
 
 export const COLORS = {
     // Grimdark / Industrial Palette
@@ -51,8 +51,15 @@ export const STATUS = {
 };
 
 /** Elevation/shadow helpers for Android depth */
-export const SHADOWS = {
-    sm: Platform.select({
+export const SHADOWS: {
+    sm: ViewStyle;
+    md: ViewStyle;
+    lg: ViewStyle;
+    glow: (color: string) => ViewStyle;
+    cathodeGlow: ViewStyle;
+    industrialDepth: ViewStyle;
+} = {
+    sm: Platform.select<ViewStyle>({
         ios: {
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
@@ -63,8 +70,8 @@ export const SHADOWS = {
             elevation: 3,
         },
         default: {},
-    }),
-    md: Platform.select({
+    })!,
+    md: Platform.select<ViewStyle>({
         ios: {
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 4 },
@@ -75,8 +82,8 @@ export const SHADOWS = {
             elevation: 6,
         },
         default: {},
-    }),
-    lg: Platform.select({
+    })!,
+    lg: Platform.select<ViewStyle>({
         ios: {
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 8 },
@@ -87,9 +94,9 @@ export const SHADOWS = {
             elevation: 12,
         },
         default: {},
-    }),
-    glow: (color: string) =>
-        Platform.select({
+    })!,
+    glow: (color: string): ViewStyle =>
+        Platform.select<ViewStyle>({
             ios: {
                 shadowColor: color,
                 shadowOffset: { width: 0, height: 0 },
@@ -100,8 +107,8 @@ export const SHADOWS = {
                 elevation: 8,
             },
             default: {},
-        }),
-    cathodeGlow: Platform.select({
+        })!,
+    cathodeGlow: Platform.select<ViewStyle>({
         ios: {
             shadowColor: '#00FF41', // Full Cathode
             shadowOffset: { width: 0, height: 0 },
@@ -113,8 +120,8 @@ export const SHADOWS = {
             shadowColor: '#00FF41',
         },
         default: {},
-    }),
-    industrialDepth: Platform.select({
+    })!,
+    industrialDepth: Platform.select<ViewStyle>({
         ios: {
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 4 },
@@ -125,5 +132,5 @@ export const SHADOWS = {
             elevation: 10,
         },
         default: {},
-    }),
+    })!,
 };

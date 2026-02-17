@@ -7,6 +7,9 @@ const BRIDGE_PORT = 8082;
 const DEFAULT_TIMEOUT = 5000;
 const CHAT_TIMEOUT = 120000; // 2 minutes for AI responses
 
+// Request deduplication — abort previous in-flight chat request
+let activeChatController: AbortController | null = null;
+
 export interface HealthResponse {
     status: string;
     system: string;
@@ -124,12 +127,20 @@ export async function getModels(ip: string): Promise<ModelsResponse> {
 
 /**
  * Send chat prompt to AI
+ * Includes deduplication — aborts previous in-flight request if still pending
  */
 export async function sendChat(
     ip: string,
     prompt: string,
     model: string = 'llama3'
 ): Promise<ChatResponse> {
+    // Abort any previous in-flight chat request
+    if (activeChatController) {
+        activeChatController.abort();
+    }
+    activeChatController = new AbortController();
+    const currentController = activeChatController;
+
     const url = `${buildUrl(ip)}/chat`;
 
     try {
@@ -139,6 +150,7 @@ export async function sendChat(
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt, model }),
+                signal: currentController.signal,
             },
             CHAT_TIMEOUT
         );
@@ -165,8 +177,16 @@ export async function sendChat(
             throw new NetworkError('Empty response from AI');
         }
         return data;
-    } catch (error) {
+    } catch (error: any) {
+        if (error.name === 'AbortError') {
+            throw new NetworkError('Request superseded by newer request');
+        }
         if (error instanceof NetworkError) throw error;
         throw new NetworkError('Failed to send chat');
+    } finally {
+        // Clear the controller if this was the active one
+        if (activeChatController === currentController) {
+            activeChatController = null;
+        }
     }
 }

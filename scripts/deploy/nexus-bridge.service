@@ -1,17 +1,17 @@
 [Unit]
-Description=Von Agent — AI Bridge Server (Flask on port 8082)
+Description=NeuroSync — Memory Backend Server
 After=network.target
 Wants=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/kosi/mobile-dev-lab/my-expo-app
-ExecStartPre=/bin/bash -c 'for i in 1 2 3 4 5; do curl -sf http://localhost:11435/api/tags >/dev/null 2>&1 && exit 0; echo "Waiting for Ollama on 11435... ($i/5)"; sleep 3; done; echo "WARNING: Ollama not reachable. Starting bridge anyway."'
-ExecStart=/usr/bin/python3 /home/kosi/mobile-dev-lab/my-expo-app/mobile_bridge.py
+# TODO: Update WorkingDirectory to your actual project path
+WorkingDirectory=%h/mobile-dev-lab/my-expo-app/backend
+ExecStartPre=/bin/bash -c 'for i in 1 2 3 4 5; do curl -sf http://localhost:11434/api/tags >/dev/null 2>&1 && exit 0; echo "Waiting for Ollama... ($i/5)"; sleep 3; done; echo "WARNING: Ollama not reachable. Starting server anyway."'
+ExecStart=/usr/bin/python3 -m memory.server
 Restart=on-failure
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
-Environment=PATH=/home/kosi/.local/bin:/usr/local/bin:/usr/bin:/bin
 
 [Install]
 WantedBy=default.target

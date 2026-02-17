@@ -85,7 +85,7 @@ export function NeonButton({
         justifyContent: 'center',
         flexDirection: 'row',
         gap: 8,
-        ...(SHADOWS.md as object),
+        ...SHADOWS.md,
     };
 
     return (

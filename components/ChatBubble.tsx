@@ -79,7 +79,7 @@ export function ChatBubble({ role, content, route, timestamp, model }: ChatBubbl
         borderLeftColor: isUser ? (COLORS.RED + '40') : COLORS.GREEN,
         borderRightColor: isUser ? COLORS.RED : (COLORS.GREEN + '40'),
         backgroundColor: isUser ? COLORS.CARD : COLORS.PANEL,
-        ...(isUser ? (SHADOWS.industrialDepth as object) : (SHADOWS.cathodeGlow as object)),
+        ...(isUser ? SHADOWS.industrialDepth : SHADOWS.cathodeGlow),
     };
 
     return (

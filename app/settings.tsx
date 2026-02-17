@@ -67,12 +67,16 @@ export default function SettingsScreen() {
     const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
     const [chatCount, setChatCount] = useState(0);
     const [hasChanges, setHasChanges] = useState(false);
+    const [settingsLoaded, setSettingsLoaded] = useState(false);
     const [beamStats, setBeamStats] = useState<BeamStats>(neurobeam.getStats());
     const [showQRScanner, setShowQRScanner] = useState(false);
     const [beamConfig, setBeamConfig] = useState<BeamConfig | null>(null);
 
     useEffect(() => {
-        loadSettings().then((s) => setSettings(s));
+        loadSettings().then((s) => {
+            setSettings(s);
+            setSettingsLoaded(true);
+        });
         loadChatIndex().then((chats) => setChatCount(chats.length));
 
         // Subscribe to NeuroBeam updates
@@ -197,6 +201,17 @@ export default function SettingsScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     };
 
+    // Show loading indicator while settings are being loaded from storage
+    if (!settingsLoaded) {
+        return (
+            <View style={{ flex: 1, backgroundColor: COLORS.BG, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: COLORS.TEAL, fontFamily: 'monospace', fontSize: 12 }}>
+                    LOADING COGITATOR SETTINGS...
+                </Text>
+            </View>
+        );
+    }
+
     return (
         <View style={{ flex: 1, backgroundColor: COLORS.BG }}>
             {/* Header */}
@@ -210,7 +225,7 @@ export default function SettingsScreen() {
                     borderBottomColor: COLORS.BORDER,
                     flexDirection: 'row',
                     alignItems: 'center',
-                    ...(SHADOWS.md as object),
+                    ...SHADOWS.md,
                 }}
             >
                 <Pressable
@@ -222,7 +237,7 @@ export default function SettingsScreen() {
                         borderWidth: 1,
                         borderColor: COLORS.BORDER,
                         marginRight: 12,
-                        ...(SHADOWS.sm as object),
+                        ...SHADOWS.sm,
                     }}
                 >
                     <Text style={{ color: COLORS.BLUE, fontSize: 16, fontWeight: '700' }}>←</Text>
@@ -391,7 +406,7 @@ export default function SettingsScreen() {
                                         borderWidth: 1.5,
                                         borderColor: active ? COLORS.BLUE : COLORS.BORDER,
                                         backgroundColor: active ? COLORS.BLUE + '18' : COLORS.CARD,
-                                        ...(SHADOWS.sm as object),
+                                        ...SHADOWS.sm,
                                     }}
                                 >
                                     <Text
@@ -561,7 +576,7 @@ export default function SettingsScreen() {
                     backgroundColor: COLORS.PANEL,
                     borderTopWidth: 1,
                     borderTopColor: COLORS.BORDER,
-                    ...(SHADOWS.lg as object),
+                    ...SHADOWS.lg,
                 }}
             >
                 <NeonButton
@@ -612,7 +627,7 @@ function MenuSection({
         overflow: 'hidden',
         borderLeftWidth: 6,
         borderLeftColor: isOpen ? COLORS.TEAL : COLORS.BORDER_LIGHT,
-        ...(SHADOWS.industrialDepth as object),
+        ...SHADOWS.industrialDepth,
     };
 
     return (

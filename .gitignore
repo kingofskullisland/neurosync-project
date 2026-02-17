@@ -43,3 +43,14 @@ app-example
 
 __pycache__/
 *.pyc
+
+# Junk / build artifacts
+*.log
+*.backup
+*.code-workspace
+v*.txt
+.env
+.env.*
+!.env.example
+backend.log
+mobile_bridge.log

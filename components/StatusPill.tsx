@@ -30,7 +30,7 @@ export function StatusPill({ label, status, value }: StatusPillProps) {
         borderWidth: 1,
         borderColor: style.border + '60',
         backgroundColor: style.bg,
-        ...(SHADOWS.sm as object),
+        ...SHADOWS.sm,
     };
 
     return (
