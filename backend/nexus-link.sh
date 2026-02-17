@@ -22,11 +22,7 @@ fi
 
 # Start the bridge in the background
 echo "[NEXUS PROTOCOL] Starting FastAPI Bridge..."
-<<<<<<< HEAD
 python3 -m uvicorn memory.server:app --host 0.0.0.0 --port 8082 --reload &
-=======
-python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8082 --reload &
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
 
 # Wait a moment for bridge to init
 sleep 2

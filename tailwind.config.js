@@ -5,7 +5,6 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-<<<<<<< HEAD
         // Adeptus Mechanicus Palette (Refined Contrast)
         'mechanicus-green': '#00ff41',
         'mechanicus-red': '#C41E3A',
@@ -15,19 +14,14 @@ module.exports = {
         'mechanicus-gold': '#FFB900',
         'mechanicus-brass': '#8B652E',
 
-        // Legacy/Akira support (mapping to new theme where appropriate or keeping for compat)
-        'akira-bg': '#0d0f0d', // Mapped to dark
-        'akira-panel': '#0c1428',
-        'neo-red': '#ff4500',
-        'neo-green': '#00ff41',
-=======
         // Akira-inspired palette
-        'akira-bg': '#060b18',
+        'akira-bg': '#0d0f0d',
         'akira-panel': '#0c1428',
         'akira-card': '#101d35',
         'akira-surface': '#162040',
         'akira-border': '#1e2d52',
         'akira-border-light': '#2a3d6e',
+
         // Neo-Tokyo accent colors
         'neo-red': '#e63946',
         'neo-red-dark': '#c0392b',
@@ -36,7 +30,8 @@ module.exports = {
         'neo-blue': '#38bdf8',
         'neo-white': '#e2e8f0',
         'neo-ghost': '#94a3b8',
-        'neo-green': '#22c55e',
+        'neo-green': '#00ff41',
+
         // Legacy aliases for compatibility during migration
         'cyber-bg': '#060b18',
         'cyber-panel': '#0c1428',
@@ -46,10 +41,6 @@ module.exports = {
         'neon-magenta': '#e63946',
         'neon-green': '#22c55e',
         'neon-amber': '#f59e0b',
-      },
-      fontFamily: {
-        mono: ['SpaceMono', 'Courier', 'monospace'],
->>>>>>> 5c9349c79ed57672c551b354ee7bdc16bdb15bbd
       },
       fontFamily: {
         mono: ['SpaceMono', 'Courier', 'monospace'],
