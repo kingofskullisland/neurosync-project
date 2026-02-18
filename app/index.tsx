@@ -38,7 +38,7 @@ import {
   recordModelRequest,
   saveChatMessages,
 } from '../lib/storage';
-import { COLORS } from '../lib/theme';
+import { COLORS, SHADOWS } from '../lib/theme';
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
