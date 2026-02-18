@@ -49,14 +49,14 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
     },
     local: {
-        backgroundColor: '#222',
-        borderBottomColor: '#333',
+        backgroundColor: '#1A120B', // Holy Oil
+        borderBottomColor: '#332211',
         justifyContent: 'center',
         gap: 8,
     },
     tethered: {
-        backgroundColor: '#4B0082',
-        borderBottomColor: '#6A0DAD',
+        backgroundColor: '#1A1614', // Deep Rust
+        borderBottomColor: '#8B652E', // Brass
     },
     infoRow: {
         flexDirection: 'row',

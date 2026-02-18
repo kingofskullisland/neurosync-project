@@ -71,15 +71,15 @@ export function ChatBubble({ role, content, route, timestamp, model }: ChatBubbl
     const bubbleStyle: ViewStyle = {
         maxWidth: '85%',
         padding: 14,
-        borderRadius: 8,
+        borderRadius: 2, // Sharp corners for industrial look
         borderWidth: 1,
-        borderLeftWidth: isUser ? 1 : 3,
-        borderRightWidth: isUser ? 3 : 1,
-        borderColor: isUser ? COLORS.RED : COLORS.GREEN,
-        borderLeftColor: isUser ? (COLORS.RED + '40') : COLORS.GREEN,
-        borderRightColor: isUser ? COLORS.RED : (COLORS.GREEN + '40'),
+        borderLeftWidth: isUser ? 1 : 4, // Heavy left border for AI
+        borderRightWidth: isUser ? 4 : 1, // Heavy right border for user
+        borderColor: isUser ? COLORS.RED_DARK : COLORS.BORDER,
+        borderLeftColor: isUser ? COLORS.RED_DARK : COLORS.BORDER_LIGHT,
+        borderRightColor: isUser ? COLORS.RED : COLORS.BORDER,
         backgroundColor: isUser ? COLORS.CARD : COLORS.PANEL,
-        ...(isUser ? SHADOWS.industrialDepth : SHADOWS.cathodeGlow),
+        ...(isUser ? SHADOWS.sm : SHADOWS.md), // Reduced shadow for grounded look
     };
 
     return (

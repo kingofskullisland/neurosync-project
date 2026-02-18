@@ -247,78 +247,48 @@ export default function ChatScreen() {
         <TetherStatus />
 
         {/* HEADER: Servo Skull & Title */}
-        <View className="pt-4 px-4 border-b-2 border-mechanicus-plate bg-mechanicus-dark pb-4 z-10 w-full relative">
+        <View className="pt-4 px-4 border-b-2 border-mechanicus-brass bg-mechanicus-dark pb-4 z-10 w-full relative">
           <View className="absolute top-0 left-0 right-0 h-1 hazard-stripe" />
 
           {/* Purity Seal for Tethered Mode */}
-          {inferenceMode === 'tethered' && <PuritySeal />}
+          {inferenceMode === 'tethered' && <PuritySeal label="LINKED" />}
 
           <View className="flex-row justify-between items-start">
             <View>
-              <AkiraTitle text="NEUROSYNC" size="md" accent={COLORS.GREEN} />
-              <Text className="text-mechanicus-green font-mono text-xs opacity-70 mt-1">
-                TERMINAL v6.0.0-ULTIMA
+              <AkiraTitle text="COGITATOR LINK" size="md" accent={COLORS.TEAL} />
+              <Text className="text-mechanicus-gold font-mono text-xs opacity-70 mt-1">
+                // OMNISSIAH_NET // v6.0.0
               </Text>
             </View>
-            <View className="flex-row gap-2">
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  setIsScanning(true);
-                }}
-                className="p-2 border-2 border-mechanicus-green bg-mechanicus-green/10 active:bg-mechanicus-green/40 rounded-sm"
-              >
-                <Text className="text-mechanicus-green text-lg">⚡</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.push('/history');
-                }}
-                className="p-2 border-2 border-mechanicus-brass/50 bg-mechanicus-brass/10 active:bg-mechanicus-brass/40 rounded-sm"
-              >
-                <Text className="text-mechanicus-green text-lg">📋</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.push('/settings');
-                }}
-                className="p-2 border-2 border-mechanicus-gold/50 bg-mechanicus-gold/10 active:bg-mechanicus-gold/40 rounded-sm"
-              >
-                <Text className="text-mechanicus-green text-lg">⚙️</Text>
-              </Pressable>
-            </View>
-          </View>
-
-          <View className="mt-4">
-            <ServoSkull status={loading ? "COMPUTING" : "VIGILANT"} />
+            ...
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/settings');
+              }}
+              className="p-2 border-2 border-mechanicus-gold bg-mechanicus-gold/10 active:bg-mechanicus-gold/40 rounded-sm"
+            >
+              <Text className="text-mechanicus-gold text-lg">⚙️</Text>
+            </Pressable>
           </View>
         </View>
 
-        {/* ERROR BANNER */}
-        {error && (
-          <Pressable
-            onPress={() => setError(null)}
-            className="bg-mechanicus-red/20 border-b border-mechanicus-red p-2"
-          >
-            <Text className="text-mechanicus-red font-mono text-center font-bold animate-pulse">
-              [! WARNING: {error} !]
-            </Text>
-          </Pressable>
-        )}
+        <View className="mt-4">
+          <ServoSkull status={loading ? "COMPUTING" : "AWAITING RITES"} />
+        </View>
 
+        ...
         {messages.length === 0 ? (
           <View className="flex-1 items-center justify-center p-8">
             <Text className="text-mechanicus-green font-mono text-center opacity-80 mb-4">
-              [SYSTEM_BOOT_COMPLETE]
+              [MACHINE_SPIRIT_AWAKENED]
             </Text>
             <Text className="text-mechanicus-green font-mono text-center text-xs opacity-60">
-              &quot;There is no strength in flesh, only weakness.&quot;
+              &quot;Knowledge is power, guard it well.&quot;
             </Text>
             <View className="w-12 h-1 bg-mechanicus-green mt-4 mb-4" />
             <Text className="text-mechanicus-green font-mono text-center text-xs">
-              Awaiting Input...
+              Initializing Logic Engines...
             </Text>
           </View>
         ) : (
@@ -351,15 +321,15 @@ export default function ChatScreen() {
         )}
 
         {/* INPUT AREA */}
-        <View className={`border-t-2 border-mechanicus-plate bg-mechanicus-iron p-3 ${keyboardVisible ? 'pb-3' : 'pb-8'}`}>
+        <View className={`border-t-2 border-mechanicus-brass bg-mechanicus-plate p-3 ${keyboardVisible ? 'pb-3' : 'pb-8'}`}>
           <View className="flex-row items-end space-x-2">
             <TextInput
               ref={inputRef}
-              className="flex-1 bg-mechanicus-dark border-2 border-mechanicus-plate text-mechanicus-green font-mono p-3 text-sm min-h-[52px] etched-inset"
+              className="flex-1 bg-mechanicus-dark border-2 border-mechanicus-brass text-mechanicus-green font-mono p-3 text-sm min-h-[52px] etched-inset"
               value={input}
               onChangeText={setInput}
-              placeholder="Input Directive..."
-              placeholderTextColor="#2d382d"
+              placeholder=">>> INPUT DIRECTIVE..."
+              placeholderTextColor="#5C3A2E"
               multiline
               maxLength={2000}
               editable={!loading}
@@ -381,7 +351,7 @@ export default function ChatScreen() {
         {/* FOOTER */}
         <StatusSlate />
         <NoosphericStream />
-      </View>
-    </CRTScreen>
+      </View >
+    </CRTScreen >
   );
 }

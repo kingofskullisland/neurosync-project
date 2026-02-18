@@ -188,6 +188,17 @@ printf "%-59s║\n" ""
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
+# ─── QR CODE ───
+echo -e "\n${AMBER}[6/6] MOBILE UPLINK QR${NC}"
+CONNECTION_STRING="neurosync://${LOCAL_IP}:${BRIDGE_PORT}"
+if [ -f "${DESKTOP_DIR}/gen_qr.py" ]; then
+    # Activate venv if available for qrcode lib (assuming installed in system or venv)
+    # We use python3 directly as qrcode might be system-wide or in venv
+    python3 "${DESKTOP_DIR}/gen_qr.py" "$CONNECTION_STRING" || echo -e "${RED}QR Generation Failed${NC}"
+else
+    echo -e "${RED}gen_qr.py not found${NC}"
+fi
+
 echo -e "${GREEN}${BOLD}═══ ALL SYSTEMS NOMINAL — THE FORGE IS ONLINE ═══${NC}"
 echo -e "${DIM}Press Ctrl+C to shut down all services.${NC}"
 echo ""

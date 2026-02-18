@@ -6,36 +6,36 @@
 import { Platform, ViewStyle } from 'react-native';
 
 export const COLORS = {
-    // Grimdark / Industrial Palette
-    BG: '#080908', // Darker, depth-filled industrial black
-    PANEL: '#121412', // Slightly lighter than BG but still very dark
-    CARD: '#1E231E', // Dark iron grey
-    SURFACE: '#2D382D', // Gunmetal / Iron Plate
-    BORDER: '#435043', // Weathered Steel (Dark)
-    BORDER_LIGHT: '#8BA38B', // Brushed Steel (Light)
-    BRASS: '#8B652E', // Aged Brass
-    GOLD_DULL: '#A88B34', // Worn Mechanicus Gold
+    // Grimdark / Industrial Palette (Updated for v6.0 ULTIMA)
+    BG: '#050404', // Void Black (Warm undertone)
+    PANEL: '#0F0E0D', // Oiled Iron
+    CARD: '#1A1614', // Deep Rust Shadow
+    SURFACE: '#241F1C', // Weathered Plasteel
+    BORDER: '#5C3A2E', // Oxidized Iron
+    BORDER_LIGHT: '#8B652E', // Worn Brass
+    BRASS: '#B8860B', // Polished Brass
+    GOLD_DULL: '#8B652E', // Aged Gold
 
-    // Accents (Enhanced Contrast)
-    RED: '#C41E3A', // Cardinal / Blood (Brighter for UI contrast)
-    RED_DARK: '#660000', // Deep Dried Blood
-    AMBER: '#E67E22', // Industrial Orange
-    TEAL: '#00FF41', // Cathode Green (Full Phosphor)
-    BLUE: '#1F75FE', // Data Blue (Rich contrast)
-    GREEN: '#00FF41', // Cathode Green
-    GOLD: '#FFB900', // Polished Gold
+    // Accents (Grimdark Contrast)
+    RED: '#8B0000', // Crimson / Blood
+    RED_DARK: '#4A0404', // Dried Blood
+    AMBER: '#D45500', // Forge Fire
+    TEAL: '#20B2AA', // Oxidized Copper (Verdigris)
+    BLUE: '#191970', // Midnight / Void Blue
+    GREEN: '#006400', // Dark Gothic Green
+    GOLD: '#FFD700', // Holy Gold (Purity)
 
-    // Text (Tactical Readability)
-    TEXT_BRIGHT: '#F0F0F0', // Clean data
-    TEXT_MED: '#B0C4B0', // Etched Metal
-    TEXT_DIM: '#6E7A6E', // Rusted Surface
-    TEXT_MUTED: '#3D473D', // Deep Rust / Carbon
+    // Text (Parchment & Terminal)
+    TEXT_BRIGHT: '#E6DCC3', // Parchment (Clean)
+    TEXT_MED: '#C4B99A', // Parchment (Aged)
+    TEXT_DIM: '#8C7E6A', // Faded Ink
+    TEXT_MUTED: '#594D3F', // Ancient Stain
 
     // Status
-    SUCCESS: '#00FF41', // Phosphor Green
-    WARNING: '#FFB900', // Amber Bolt
-    ERROR: '#C41E3A', // Failure Red
-    OFFLINE: '#2C1A1A', // Dead Logic
+    SUCCESS: '#228B22', // Forest Green (Muted)
+    WARNING: '#D4AF37', // Warning Gold
+    ERROR: '#8B0000', // Critical Failure
+    OFFLINE: '#1A120B', // Dead Machine Spirit
 };
 
 export const ROUTE_COLORS = {

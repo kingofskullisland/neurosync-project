@@ -8,6 +8,8 @@ const BRIDGE_PORT = 8082;
 const OLLAMA_PORTS = [11434, 11435];
 const SCAN_TIMEOUT = 1500; // ms per probe
 
+import * as Network from 'expo-network';
+
 export interface DiscoveredDevice {
     ip: string;
     bridgeAvailable: boolean;
@@ -60,13 +62,29 @@ async function probe(ip: string, port: number, timeout: number = SCAN_TIMEOUT): 
  * Attempt to determine the local subnet from common private ranges.
  * Returns an array of base IPs to scan (e.g. "192.168.1").
  */
-function getCommonSubnets(): string[] {
-    return [
+async function getCommonSubnets(): Promise<string[]> {
+    const subnets: string[] = [
         '192.168.1',
         '192.168.0',
         '10.0.0',
-        '100.64.0', // Tailscale CGNAT range
     ];
+
+    // Attempt to get device subnet
+    try {
+        const ip = await Network.getIpAddressAsync();
+        if (ip && ip !== '0.0.0.0') {
+            const subnet = ip.split('.').slice(0, 3).join('.');
+            // Add to front of list, removing duplicates
+            const idx = subnets.indexOf(subnet);
+            if (idx !== -1) subnets.splice(idx, 1);
+            subnets.unshift(subnet);
+            console.log(`[Scanner] prioritized local subnet: ${subnet}`);
+        }
+    } catch (e) {
+        console.warn('[Scanner] Failed to get local IP:', e);
+    }
+
+    return subnets;
 }
 
 /**
@@ -143,7 +161,7 @@ export async function quickScan(
     onDeviceFound?: (device: DiscoveredDevice) => void,
 ): Promise<DiscoveredDevice[]> {
     const devices: DiscoveredDevice[] = [];
-    const subnets = getCommonSubnets();
+    const subnets = await getCommonSubnets();
 
     // Probe common IPs: .1 (gateway), .2-.20, .50, .100, .200, .254
     const commonSuffixes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 50, 100, 150, 200, 254];

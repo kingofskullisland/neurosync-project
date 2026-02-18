@@ -77,15 +77,16 @@ export function NeonButton({
     const buttonStyle: ViewStyle = {
         paddingHorizontal: sizeConfig.paddingH,
         paddingVertical: sizeConfig.paddingV,
-        borderRadius: 6,
-        borderWidth: 1.5,
+        borderRadius: 2, // Sharp industrial corners
+        borderWidth: 1,
+        borderBottomWidth: 3, // Heavy bottom for tactile feel
         borderColor: disabled ? COLORS.BORDER : config.border,
-        backgroundColor: disabled ? COLORS.CARD + '60' : config.bg,
+        backgroundColor: disabled ? COLORS.OFFLINE : config.bg,
         alignItems: 'center',
         justifyContent: 'center',
         flexDirection: 'row',
         gap: 8,
-        ...SHADOWS.md,
+        ...SHADOWS.sm,
     };
 
     return (

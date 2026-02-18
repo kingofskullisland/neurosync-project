@@ -2,6 +2,7 @@
  * NeuroSync — Settings Screen
  * Full menu system with submenus, model picker, FAQ, and config management
  */
+import { DiscoveredDevice, quickScan } from '@/lib/networkScanner';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -308,7 +309,7 @@ export default function SettingsScreen() {
                         label="PC IP ADDRESS"
                         value={settings.pcIp}
                         onChangeText={(v) => updateSetting('pcIp', v)}
-                        placeholder="192.168.1.100"
+                        placeholder="Server IP"
                         keyboardType="numbers-and-punctuation"
                     />
                     <InputField

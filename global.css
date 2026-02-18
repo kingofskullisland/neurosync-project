@@ -6,84 +6,104 @@
 
   /* ─── Adeptus Mechanicus Cogitator Terminal ─── */
 
-  /* CRT Scanline Overlay — visual effect applied via RN components */
+  /* CRT Scanline Overlay */
   .crt-overlay {
-    opacity: 0.95;
+    background-color: rgba(10, 5, 2, 0.92);
+    /* Void tint */
+    background-image: linear-gradient(rgba(18, 16, 16, 0) 50%,
+        rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg,
+        rgba(255, 0, 0, 0.06),
+        rgba(0, 255, 0, 0.02),
+        rgba(0, 0, 255, 0.06));
+    background-size: 100% 2px, 3px 100%;
   }
 
-  /* Phosphor Ghosting/Glow — Cathode Green data streams */
+  /* Void Texture Background */
+  .void-bg {
+    background-color: #050404;
+  }
+
+  /* Phosphor Ghosting/Glow */
   .phosphor-text {
-    color: #00ff41;
+    color: #20B2AA;
+    /* Verdigris */
+    text-shadow: 0 0 2px rgba(32, 178, 170, 0.5);
   }
 
   /* Red Alert — Sanctified Error */
   .alert-text {
-    color: #C41E3A;
+    color: #8B0000;
+    text-shadow: 0 0 5px rgba(139, 0, 0, 0.6);
   }
 
-  /* Cogitator Terminal — Green phosphor on dark steel */
+  /* Cogitator Terminal — Verdigris on Oiled Iron */
   .cogitator-terminal {
-    background-color: #080908;
-    color: #00ff41;
-    border-width: 2px;
-    border-color: #435043;
+    background-color: #0F0E0D;
+    border-width: 1px;
+    border-color: #5C3A2E;
+    /* Rust */
     border-style: solid;
   }
 
-  /* Heavy Industrial Border — Forge World panel edge */
+  /* Heavy Industrial Border — Plasteel & Rust */
   .mechanicus-border {
-    border-color: #2d382d;
+    border-color: #5C3A2E;
+    /* Rust */
     border-width: 2px;
-    border-top-width: 8px;
+    border-top-width: 4px;
+    border-bottom-width: 4px;
     border-style: solid;
   }
 
-  /* Forge Panel — Riveted industrial enclosure */
+  /* Forge Panel — Riveted Iron */
   .forge-panel {
-    background-color: #121412;
-    border-width: 2px;
-    border-color: #435043;
-    border-left-width: 6px;
-    border-left-color: #8B652E;
-    border-style: solid;
+    background-color: #1A1614;
+    /* Deep Rust Shadow */
+    border-width: 1px;
+    border-color: #5C3A2E;
+    border-left-width: 4px;
+    border-left-color: #B8860B;
+    /* Brass */
   }
 
   /* Worn Industrial Panel */
   .industrial-panel {
-    background-color: #121412;
+    background-color: #0F0E0D;
     border-width: 1px;
-    border-color: #435043;
-    border-left-width: 4px;
-    border-left-color: #8BA38B;
-  }
-
-  /* Brass Accent — Mechanicus gold/brass trim */
-  .brass-accent {
     border-color: #8B652E;
-    border-width: 1px;
-    border-bottom-width: 3px;
-    border-bottom-color: #A88B34;
-    border-style: solid;
+    /* Worn Brass */
   }
 
-  /* Hazard Stripe — Warning chevrons */
+  /* Brass Accent — Trim */
+  .brass-accent {
+    border-color: #B8860B;
+    border-width: 1px;
+    border-bottom-width: 2px;
+    border-bottom-color: #8B652E;
+  }
+
+  /* Hazard Stripe (CSS Gradient approximation for web, fallback for native) */
   .hazard-stripe {
-    background-color: #FFB900;
+    background-color: #D45500;
+    /* Forge Fire */
+    /* Note: Native doesn't support complex CSS gradients easily in NativeWind without plugins, so we keep it simple or use an image later */
   }
 
   /* Etched Inset — Recessed data viewport */
   .etched-inset {
-    background-color: #080908;
+    background-color: #050404;
     border-width: 1px;
-    border-color: #1E231E;
+    border-color: #5C3A2E;
+    /* Rust */
   }
 
-  /* Parchment Label — Tech-priest scroll text */
+  /* Parchment Label */
   .parchment-text {
     color: #C4B99A;
+    font-family: 'SpaceMono';
   }
 
-  /* Sacred Machine Oil — Deep inset background */
+  /* Sacred Machine Oil */
   .holy-oil-bg {
     background-color: #1A120B;
   }

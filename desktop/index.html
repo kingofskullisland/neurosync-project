@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,11 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700;800&display=swap');
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         :root {
             --bg: #080908;
@@ -40,14 +45,15 @@
         body::after {
             content: '';
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(0, 255, 65, 0.02) 2px,
-                rgba(0, 255, 65, 0.02) 4px
-            );
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 255, 65, 0.02) 2px,
+                    rgba(0, 255, 65, 0.02) 4px);
             pointer-events: none;
             z-index: 1000;
         }
@@ -81,7 +87,15 @@
             animation: spin 10s linear infinite;
         }
 
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
 
         .header-status {
             display: flex;
@@ -102,15 +116,38 @@
         }
 
         .status-dot {
-            width: 8px; height: 8px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             background: var(--text-dim);
         }
-        .status-dot.online { background: var(--phosphor); box-shadow: 0 0 8px var(--phosphor); }
-        .status-dot.offline { background: var(--red); box-shadow: 0 0 8px var(--red); }
-        .status-dot.checking { background: var(--amber); animation: pulse 1s ease-in-out infinite; }
 
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .status-dot.online {
+            background: var(--phosphor);
+            box-shadow: 0 0 8px var(--phosphor);
+        }
+
+        .status-dot.offline {
+            background: var(--red);
+            box-shadow: 0 0 8px var(--red);
+        }
+
+        .status-dot.checking {
+            background: var(--amber);
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
 
         /* Main Grid */
         main {
@@ -155,9 +192,13 @@
             letter-spacing: 1px;
         }
 
-        .card-body { padding: 14px; }
+        .card-body {
+            padding: 14px;
+        }
 
-        .card.full-width { grid-column: 1 / -1; }
+        .card.full-width {
+            grid-column: 1 / -1;
+        }
 
         /* Stat Grid */
         .stat-grid {
@@ -181,9 +222,20 @@
             text-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
         }
 
-        .stat-value.amber { color: var(--amber); text-shadow: 0 0 10px rgba(230, 126, 34, 0.3); }
-        .stat-value.red { color: var(--red); text-shadow: 0 0 10px rgba(196, 30, 58, 0.3); }
-        .stat-value.blue { color: var(--blue); text-shadow: 0 0 10px rgba(31, 117, 254, 0.3); }
+        .stat-value.amber {
+            color: var(--amber);
+            text-shadow: 0 0 10px rgba(230, 126, 34, 0.3);
+        }
+
+        .stat-value.red {
+            color: var(--red);
+            text-shadow: 0 0 10px rgba(196, 30, 58, 0.3);
+        }
+
+        .stat-value.blue {
+            color: var(--blue);
+            text-shadow: 0 0 10px rgba(31, 117, 254, 0.3);
+        }
 
         .stat-label {
             font-size: 9px;
@@ -202,10 +254,20 @@
             font-size: 12px;
         }
 
-        .model-item:last-child { border-bottom: none; }
+        .model-item:last-child {
+            border-bottom: none;
+        }
 
-        .model-name { color: var(--text-bright); font-weight: 500; }
-        .model-size { color: var(--text-dim); font-size: 10px; }
+        .model-name {
+            color: var(--text-bright);
+            font-weight: 500;
+        }
+
+        .model-size {
+            color: var(--text-dim);
+            font-size: 10px;
+        }
+
         .model-tag {
             font-size: 9px;
             padding: 2px 6px;
@@ -226,15 +288,41 @@
             line-height: 1.6;
         }
 
-        .log-viewer::-webkit-scrollbar { width: 6px; }
-        .log-viewer::-webkit-scrollbar-track { background: var(--bg); }
-        .log-viewer::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        .log-viewer::-webkit-scrollbar {
+            width: 6px;
+        }
 
-        .log-entry { color: var(--text-dim); margin-bottom: 2px; }
-        .log-entry .ts { color: var(--text-dim); font-size: 9px; }
-        .log-entry .persona { color: var(--amber); font-weight: 700; }
-        .log-entry .route { color: var(--blue); }
-        .log-entry.error { color: var(--red); }
+        .log-viewer::-webkit-scrollbar-track {
+            background: var(--bg);
+        }
+
+        .log-viewer::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .log-entry {
+            color: var(--text-dim);
+            margin-bottom: 2px;
+        }
+
+        .log-entry .ts {
+            color: var(--text-dim);
+            font-size: 9px;
+        }
+
+        .log-entry .persona {
+            color: var(--amber);
+            font-weight: 700;
+        }
+
+        .log-entry .route {
+            color: var(--blue);
+        }
+
+        .log-entry.error {
+            color: var(--red);
+        }
 
         /* Connection Info */
         .conn-grid {
@@ -263,7 +351,9 @@
             word-break: break-all;
         }
 
-        .conn-value.offline { color: var(--red); }
+        .conn-value.offline {
+            color: var(--red);
+        }
 
         /* Buttons */
         .btn {
@@ -285,8 +375,14 @@
             box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
         }
 
-        .btn-amber { border-color: var(--amber); color: var(--amber); }
-        .btn-amber:hover { background: rgba(230, 126, 34, 0.1); }
+        .btn-amber {
+            border-color: var(--amber);
+            color: var(--amber);
+        }
+
+        .btn-amber:hover {
+            background: rgba(230, 126, 34, 0.1);
+        }
 
         /* Footer */
         footer {
@@ -300,11 +396,17 @@
 
         /* Responsive */
         @media (max-width: 768px) {
-            main { grid-template-columns: 1fr; }
-            .conn-grid { grid-template-columns: 1fr; }
+            main {
+                grid-template-columns: 1fr;
+            }
+
+            .conn-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
+
 <body>
 
     <header>
@@ -330,7 +432,8 @@
         <div class="card">
             <div class="card-header">
                 <h2>⚙ OLLAMA STATUS</h2>
-                <span class="badge" id="ollamaBadge" style="border-color: var(--text-dim); color: var(--text-dim);">—</span>
+                <span class="badge" id="ollamaBadge"
+                    style="border-color: var(--text-dim); color: var(--text-dim);">—</span>
             </div>
             <div class="card-body">
                 <div class="stat-grid">
@@ -421,7 +524,8 @@
                     <input type="text" id="bridgeUrl" value="http://localhost:8082"
                         style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--phosphor); font-family:'JetBrains Mono'; padding:8px; border-radius:3px; font-size:12px;">
                 </div>
-                <button class="btn" onclick="applyConfig()" style="width:100%; margin-top:4px;">APPLY & RECONNECT</button>
+                <button class="btn" onclick="applyConfig()" style="width:100%; margin-top:4px;">APPLY &
+                    RECONNECT</button>
             </div>
         </div>
 
@@ -433,7 +537,8 @@
             </div>
             <div class="card-body">
                 <div class="log-viewer" id="logViewer">
-                    <div class="log-entry"><span class="ts">[BOOT]</span> Cogitator Monitoring Console initialized.</div>
+                    <div class="log-entry"><span class="ts">[BOOT]</span> Cogitator Monitoring Console initialized.
+                    </div>
                 </div>
             </div>
         </div>
@@ -445,9 +550,10 @@
 
     <script>
         // ──── Configuration ────
+        const host = window.location.hostname || 'localhost';
         let CONFIG = {
-            ollamaUrl: 'http://localhost:11435',
-            bridgeUrl: 'http://localhost:8082',
+            ollamaUrl: `http://${host}:11435`,
+            bridgeUrl: `http://${host}:8082`,
         };
 
         // ──── Telemetry State ────
@@ -652,4 +758,5 @@
         setInterval(updateTelemetry, 5000);
     </script>
 </body>
+
 </html>

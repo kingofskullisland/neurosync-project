@@ -5,14 +5,14 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Adeptus Mechanicus Palette (Refined Contrast)
-        'mechanicus-green': '#00ff41',
-        'mechanicus-red': '#C41E3A',
-        'mechanicus-dark': '#080908',
-        'mechanicus-plate': '#2D382D',
-        'mechanicus-iron': '#1E231E',
-        'mechanicus-gold': '#FFB900',
-        'mechanicus-brass': '#8B652E',
+        // Adeptus Mechanicus Palette (Grimdark v6.0)
+        'mechanicus-green': '#20B2AA', // Verdigris / Oxidized Copper
+        'mechanicus-red': '#8B0000',   // Crimson / Dried Blood
+        'mechanicus-dark': '#050404',  // Void Black
+        'mechanicus-plate': '#0F0E0D', // Oiled Iron
+        'mechanicus-iron': '#1A1614',  // Deep Rust Shadow
+        'mechanicus-gold': '#B8860B',  // Polished Brass
+        'mechanicus-brass': '#8B652E', // Worn Brass
 
         // Akira-inspired palette
         'akira-bg': '#0d0f0d',

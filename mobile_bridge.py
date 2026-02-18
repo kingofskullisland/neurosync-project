@@ -11,9 +11,11 @@ import sys
 app = Flask(__name__)
 
 # CRITICAL: Port 11435 (Alpaca flatpak), NOT 11434
-OLLAMA_URL      = "http://localhost:11435/api/generate"
-OLLAMA_CHAT_URL = "http://localhost:11435/api/chat"
-OLLAMA_TAGS_URL = "http://localhost:11435/api/tags"
+# CRITICAL: Port 11435 (Alpaca flatpak), NOT 11434
+OLLAMA_BASE     = os.getenv("OLLAMA_URL", "http://localhost:11435")
+OLLAMA_URL      = f"{OLLAMA_BASE}/api/generate"
+OLLAMA_CHAT_URL = f"{OLLAMA_BASE}/api/chat"
+OLLAMA_TAGS_URL = f"{OLLAMA_BASE}/api/tags"
 PORT            = 8082
 
 @app.route('/health', methods=['GET'])

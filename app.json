@@ -15,8 +15,7 @@
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
         "BATTERY_STATS"
-      ],
-      "usesCleartextTraffic": true
+      ]
     },
     "plugins": [
       [
