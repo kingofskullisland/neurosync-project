@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroSync — Cogitator Monitoring Console</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700;800&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #080908;
+            --panel: #121412;
+            --card: #1E231E;
+            --surface: #2D382D;
+            --border: #435043;
+            --border-light: #8BA38B;
+            --brass: #8B652E;
+            --gold: #A88B34;
+            --phosphor: #00FF41;
+            --red: #C41E3A;
+            --amber: #E67E22;
+            --blue: #1F75FE;
+            --text-bright: #F0F0F0;
+            --text-med: #B0C4B0;
+            --text-dim: #6E7A6E;
+            --rust: #6B3A2A;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text-bright);
+            font-family: 'JetBrains Mono', monospace;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* CRT Scanline Overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 255, 65, 0.02) 2px,
+                rgba(0, 255, 65, 0.02) 4px
+            );
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* Header */
+        header {
+            background: var(--panel);
+            border-bottom: 3px solid var(--brass);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo h1 {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--phosphor);
+            letter-spacing: 4px;
+            text-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+        }
+
+        .logo .cog-icon {
+            font-size: 24px;
+            animation: spin 10s linear infinite;
+        }
+
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .header-status {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            font-size: 10px;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+        }
+
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--text-dim);
+        }
+        .status-dot.online { background: var(--phosphor); box-shadow: 0 0 8px var(--phosphor); }
+        .status-dot.offline { background: var(--red); box-shadow: 0 0 8px var(--red); }
+        .status-dot.checking { background: var(--amber); animation: pulse 1s ease-in-out infinite; }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* Main Grid */
+        main {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--panel);
+            border: 2px solid var(--border);
+            border-left: 6px solid var(--brass);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: var(--card);
+            padding: 10px 14px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header h2 {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            color: var(--text-med);
+        }
+
+        .card-header .badge {
+            font-size: 9px;
+            padding: 2px 8px;
+            border: 1px solid;
+            border-radius: 2px;
+            letter-spacing: 1px;
+        }
+
+        .card-body { padding: 14px; }
+
+        .card.full-width { grid-column: 1 / -1; }
+
+        /* Stat Grid */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+        }
+
+        .stat-box {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--phosphor);
+            text-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+
+        .stat-value.amber { color: var(--amber); text-shadow: 0 0 10px rgba(230, 126, 34, 0.3); }
+        .stat-value.red { color: var(--red); text-shadow: 0 0 10px rgba(196, 30, 58, 0.3); }
+        .stat-value.blue { color: var(--blue); text-shadow: 0 0 10px rgba(31, 117, 254, 0.3); }
+
+        .stat-label {
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        /* Model List */
+        .model-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+        }
+
+        .model-item:last-child { border-bottom: none; }
+
+        .model-name { color: var(--text-bright); font-weight: 500; }
+        .model-size { color: var(--text-dim); font-size: 10px; }
+        .model-tag {
+            font-size: 9px;
+            padding: 2px 6px;
+            border: 1px solid var(--phosphor);
+            color: var(--phosphor);
+            border-radius: 2px;
+        }
+
+        /* Log Viewer */
+        .log-viewer {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 10px;
+            max-height: 250px;
+            overflow-y: auto;
+            font-size: 11px;
+            line-height: 1.6;
+        }
+
+        .log-viewer::-webkit-scrollbar { width: 6px; }
+        .log-viewer::-webkit-scrollbar-track { background: var(--bg); }
+        .log-viewer::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        .log-entry { color: var(--text-dim); margin-bottom: 2px; }
+        .log-entry .ts { color: var(--text-dim); font-size: 9px; }
+        .log-entry .persona { color: var(--amber); font-weight: 700; }
+        .log-entry .route { color: var(--blue); }
+        .log-entry.error { color: var(--red); }
+
+        /* Connection Info */
+        .conn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .conn-item {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 10px;
+        }
+
+        .conn-label {
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
+
+        .conn-value {
+            font-size: 14px;
+            color: var(--phosphor);
+            word-break: break-all;
+        }
+
+        .conn-value.offline { color: var(--red); }
+
+        /* Buttons */
+        .btn {
+            background: none;
+            border: 2px solid var(--phosphor);
+            color: var(--phosphor);
+            padding: 6px 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: rgba(0, 255, 65, 0.1);
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+        }
+
+        .btn-amber { border-color: var(--amber); color: var(--amber); }
+        .btn-amber:hover { background: rgba(230, 126, 34, 0.1); }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 16px;
+            color: var(--text-dim);
+            font-size: 9px;
+            letter-spacing: 2px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            main { grid-template-columns: 1fr; }
+            .conn-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <span class="cog-icon">⚙</span>
+            <h1>NEUROSYNC COGITATOR</h1>
+        </div>
+        <div class="header-status">
+            <div class="status-badge">
+                <span class="status-dot checking" id="ollamaStatusDot"></span>
+                <span id="ollamaStatusText">CHECKING OLLAMA</span>
+            </div>
+            <div class="status-badge">
+                <span class="status-dot checking" id="bridgeStatusDot"></span>
+                <span id="bridgeStatusText">CHECKING BRIDGE</span>
+            </div>
+            <button class="btn" onclick="refreshAll()">↻ REFRESH</button>
+        </div>
+    </header>
+
+    <main>
+        <!-- Server Status -->
+        <div class="card">
+            <div class="card-header">
+                <h2>⚙ OLLAMA STATUS</h2>
+                <span class="badge" id="ollamaBadge" style="border-color: var(--text-dim); color: var(--text-dim);">—</span>
+            </div>
+            <div class="card-body">
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="stat-value" id="modelCount">—</div>
+                        <div class="stat-label">LOADED MODELS</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value blue" id="ollamaVersion">—</div>
+                        <div class="stat-label">VERSION</div>
+                    </div>
+                </div>
+                <div style="margin-top: 12px;" id="modelList">
+                    <div class="model-item" style="color: var(--text-dim);">Awaiting data stream...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Telemetry -->
+        <div class="card">
+            <div class="card-header">
+                <h2>📊 TELEMETRY</h2>
+                <span class="badge" style="border-color: var(--phosphor); color: var(--phosphor);">LIVE</span>
+            </div>
+            <div class="card-body">
+                <div class="stat-grid">
+                    <div class="stat-box">
+                        <div class="stat-value" id="requestCount">0</div>
+                        <div class="stat-label">REQUESTS</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value amber" id="avgResponseTime">—</div>
+                        <div class="stat-label">AVG RESPONSE</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value red" id="errorCount">0</div>
+                        <div class="stat-label">ERRORS</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value blue" id="uptime">—</div>
+                        <div class="stat-label">UPTIME</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connection Diagnostics -->
+        <div class="card">
+            <div class="card-header">
+                <h2>🔗 CONNECTION DIAGNOSTICS</h2>
+                <button class="btn btn-amber" onclick="runDiagnostics()">RUN SCAN</button>
+            </div>
+            <div class="card-body">
+                <div class="conn-grid" id="connGrid">
+                    <div class="conn-item">
+                        <div class="conn-label">LOCAL IP</div>
+                        <div class="conn-value" id="localIp">Detecting...</div>
+                    </div>
+                    <div class="conn-item">
+                        <div class="conn-label">TAILSCALE IP</div>
+                        <div class="conn-value" id="tailscaleIp">Checking...</div>
+                    </div>
+                    <div class="conn-item">
+                        <div class="conn-label">BRIDGE PORT</div>
+                        <div class="conn-value" id="bridgePort">8082</div>
+                    </div>
+                    <div class="conn-item">
+                        <div class="conn-label">OLLAMA PORT</div>
+                        <div class="conn-value" id="ollamaPort">11435</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration -->
+        <div class="card">
+            <div class="card-header">
+                <h2>⚡ BRIDGE CONFIG</h2>
+            </div>
+            <div class="card-body">
+                <div style="margin-bottom: 8px;">
+                    <label class="conn-label" style="display:block;">OLLAMA URL</label>
+                    <input type="text" id="ollamaUrl" value="http://localhost:11435"
+                        style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--phosphor); font-family:'JetBrains Mono'; padding:8px; border-radius:3px; font-size:12px;">
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <label class="conn-label" style="display:block;">BRIDGE URL</label>
+                    <input type="text" id="bridgeUrl" value="http://localhost:8082"
+                        style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--phosphor); font-family:'JetBrains Mono'; padding:8px; border-radius:3px; font-size:12px;">
+                </div>
+                <button class="btn" onclick="applyConfig()" style="width:100%; margin-top:4px;">APPLY & RECONNECT</button>
+            </div>
+        </div>
+
+        <!-- Log Viewer (Full Width) -->
+        <div class="card full-width">
+            <div class="card-header">
+                <h2>📜 ACTIVITY LOG</h2>
+                <button class="btn" onclick="clearLogs()">PURGE</button>
+            </div>
+            <div class="card-body">
+                <div class="log-viewer" id="logViewer">
+                    <div class="log-entry"><span class="ts">[BOOT]</span> Cogitator Monitoring Console initialized.</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        ⚙ NEUROSYNC MONITORING TERMINAL v1.0 — THE OMNISSIAH PROTECTS ⚙
+    </footer>
+
+    <script>
+        // ──── Configuration ────
+        let CONFIG = {
+            ollamaUrl: 'http://localhost:11435',
+            bridgeUrl: 'http://localhost:8082',
+        };
+
+        // ──── Telemetry State ────
+        let telemetry = {
+            requests: 0,
+            errors: 0,
+            responseTimes: [],
+            startTime: Date.now(),
+        };
+
+        // ──── Logging ────
+        function log(message, type = 'info') {
+            const viewer = document.getElementById('logViewer');
+            const ts = new Date().toLocaleTimeString('en-GB', { hour12: false });
+            const entry = document.createElement('div');
+            entry.className = 'log-entry' + (type === 'error' ? ' error' : '');
+            entry.innerHTML = `<span class="ts">[${ts}]</span> ${message}`;
+            viewer.appendChild(entry);
+            viewer.scrollTop = viewer.scrollHeight;
+
+            // Keep only last 100 entries
+            while (viewer.children.length > 100) {
+                viewer.removeChild(viewer.firstChild);
+            }
+        }
+
+        function clearLogs() {
+            document.getElementById('logViewer').innerHTML = '';
+            log('Log buffer purged.');
+        }
+
+        // ──── Ollama Status ────
+        async function checkOllama() {
+            const dot = document.getElementById('ollamaStatusDot');
+            const text = document.getElementById('ollamaStatusText');
+            const badge = document.getElementById('ollamaBadge');
+
+            try {
+                // Check version
+                const vResp = await fetch(`${CONFIG.ollamaUrl}/api/version`, { signal: AbortSignal.timeout(3000) });
+                if (vResp.ok) {
+                    const vData = await vResp.json();
+                    document.getElementById('ollamaVersion').textContent = vData.version || '?';
+                }
+
+                // Check models
+                const resp = await fetch(`${CONFIG.ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(5000) });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+                const data = await resp.json();
+                const models = data.models || [];
+
+                dot.className = 'status-dot online';
+                text.textContent = 'OLLAMA ONLINE';
+                badge.textContent = 'ACTIVE';
+                badge.style.borderColor = 'var(--phosphor)';
+                badge.style.color = 'var(--phosphor)';
+
+                document.getElementById('modelCount').textContent = models.length;
+
+                // Render model list
+                const listEl = document.getElementById('modelList');
+                if (models.length === 0) {
+                    listEl.innerHTML = '<div class="model-item" style="color:var(--amber)">No models loaded. Pull a model via CLI.</div>';
+                } else {
+                    listEl.innerHTML = models.map(m => {
+                        const sizeGB = (m.size / (1024 * 1024 * 1024)).toFixed(1);
+                        const family = m.details?.family || '?';
+                        return `<div class="model-item">
+                            <span class="model-name">${m.name}</span>
+                            <span class="model-size">${family} · ${sizeGB}GB</span>
+                            <span class="model-tag">${m.details?.parameter_size || '?'}</span>
+                        </div>`;
+                    }).join('');
+                }
+
+                log(`Ollama: <span class="route">${models.length}</span> models detected.`);
+                telemetry.requests++;
+
+            } catch (e) {
+                dot.className = 'status-dot offline';
+                text.textContent = 'OLLAMA OFFLINE';
+                badge.textContent = 'DEAD';
+                badge.style.borderColor = 'var(--red)';
+                badge.style.color = 'var(--red)';
+                document.getElementById('modelCount').textContent = '✗';
+
+                log(`<span class="persona">ALERT:</span> Ollama unreachable — ${e.message}`, 'error');
+                telemetry.errors++;
+            }
+        }
+
+        // ──── Bridge Status ────
+        async function checkBridge() {
+            const dot = document.getElementById('bridgeStatusDot');
+            const text = document.getElementById('bridgeStatusText');
+
+            try {
+                const start = Date.now();
+                const resp = await fetch(`${CONFIG.bridgeUrl}/health`, { signal: AbortSignal.timeout(5000) });
+                const elapsed = Date.now() - start;
+
+                if (resp.ok) {
+                    const data = await resp.json();
+                    dot.className = 'status-dot online';
+                    text.textContent = 'BRIDGE ONLINE';
+                    log(`Bridge: <span class="route">HEALTHY</span> (${elapsed}ms) — ${data.system || ''}`);
+                    telemetry.requests++;
+                    telemetry.responseTimes.push(elapsed);
+                } else {
+                    throw new Error(`HTTP ${resp.status}`);
+                }
+            } catch (e) {
+                dot.className = 'status-dot offline';
+                text.textContent = 'BRIDGE OFFLINE';
+                log(`<span class="persona">ALERT:</span> Bridge unreachable — ${e.message}`, 'error');
+                telemetry.errors++;
+            }
+        }
+
+        // ──── Diagnostics ────
+        async function runDiagnostics() {
+            log('Running connection diagnostics...');
+
+            // Detect local IP via WebRTC (best-effort)
+            try {
+                const pc = new RTCPeerConnection({ iceServers: [] });
+                pc.createDataChannel('');
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+
+                await new Promise(resolve => {
+                    pc.onicecandidate = (e) => {
+                        if (!e.candidate) { resolve(); return; }
+                        const ip = e.candidate.candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
+                        if (ip) {
+                            document.getElementById('localIp').textContent = ip[1];
+                            log(`Local IP detected: <span class="route">${ip[1]}</span>`);
+                        }
+                    };
+                    setTimeout(resolve, 2000);
+                });
+                pc.close();
+            } catch {
+                document.getElementById('localIp').textContent = 'Detection failed';
+                document.getElementById('localIp').className = 'conn-value offline';
+            }
+
+            // Check Tailscale
+            try {
+                // Tailscale uses 100.x.x.x range — check if bridge responds on that
+                document.getElementById('tailscaleIp').textContent = 'Check CLI: tailscale ip';
+                document.getElementById('tailscaleIp').className = 'conn-value';
+            } catch {
+                document.getElementById('tailscaleIp').textContent = 'Not detected';
+                document.getElementById('tailscaleIp').className = 'conn-value offline';
+            }
+
+            await checkOllama();
+            await checkBridge();
+            log('Diagnostics complete.');
+        }
+
+        // ──── Telemetry Updates ────
+        function updateTelemetry() {
+            document.getElementById('requestCount').textContent = telemetry.requests;
+            document.getElementById('errorCount').textContent = telemetry.errors;
+
+            if (telemetry.responseTimes.length > 0) {
+                const avg = Math.round(telemetry.responseTimes.reduce((a, b) => a + b) / telemetry.responseTimes.length);
+                document.getElementById('avgResponseTime').textContent = avg + 'ms';
+            }
+
+            // Uptime
+            const uptimeMs = Date.now() - telemetry.startTime;
+            const mins = Math.floor(uptimeMs / 60000);
+            const hrs = Math.floor(mins / 60);
+            document.getElementById('uptime').textContent = hrs > 0 ? `${hrs}h ${mins % 60}m` : `${mins}m`;
+        }
+
+        // ──── Config ────
+        function applyConfig() {
+            CONFIG.ollamaUrl = document.getElementById('ollamaUrl').value.replace(/\/$/, '');
+            CONFIG.bridgeUrl = document.getElementById('bridgeUrl').value.replace(/\/$/, '');
+            log(`Config updated: Ollama→<span class="route">${CONFIG.ollamaUrl}</span>, Bridge→<span class="route">${CONFIG.bridgeUrl}</span>`);
+            refreshAll();
+        }
+
+        // ──── Main Loop ────
+        async function refreshAll() {
+            await checkOllama();
+            await checkBridge();
+            updateTelemetry();
+        }
+
+        // Boot
+        log('Initating machine spirit communion...');
+        refreshAll();
+
+        // Poll every 15 seconds
+        setInterval(refreshAll, 15000);
+        setInterval(updateTelemetry, 5000);
+    </script>
+</body>
+</html>

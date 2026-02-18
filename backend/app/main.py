@@ -111,9 +111,7 @@ async def list_models():
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    # Fix for the AttributeError: Ensure decision is handled as a value
-    # Calculate complexity using the scorer directly or via router helper
-    # We'll use the router's logic to get a decision first
+    """Chat endpoint with Hadron persona, conversation history, and proper config."""
     
     decision = await ai_router.route(
         query=request.prompt,
@@ -122,31 +120,39 @@ async def chat(request: ChatRequest):
         image_data=request.image
     )
     
-    decision_score = decision.complexity # It's a float
+    decision_score = decision.complexity
     
-    # Injected System Prompt for Hadron
-    system_prompt_obj = get_system_prompt(Persona.HADRON)
-    system_prompt = system_prompt_obj.prompt.format(system_state="Status: Nominal") # Basic formatting to avoid error if {system_state} is present
+    # Use Hadron persona config (temperature=0.7, max_tokens=2048)
+    hadron_config = get_system_prompt(Persona.HADRON)
+    system_prompt = hadron_config.prompt.format(system_state="Status: Nominal")
+    
+    # Build message list: system → history → current prompt
+    messages = [{"role": "system", "content": system_prompt}]
+    
+    # Inject conversation history for multi-turn context
+    if request.history:
+        for msg in request.history[-20:]:  # Last 20 turns to avoid context overflow
+            messages.append({"role": msg.role, "content": msg.content})
+    
+    messages.append({"role": "user", "content": request.prompt})
+    
+    # Use client-specified model or fall back to config
+    model = request.model or settings.OLLAMA_MODEL
     
     payload = {
-        "model": "llama3.2:latest",  # Strictly use the verified tag
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": request.prompt}
-        ],
+        "model": model,
+        "messages": messages,
         "stream": False,
         "options": {
-            "temperature": 0.4,
-            "max_tokens": 150
+            "temperature": hadron_config.temperature,
+            "num_predict": hadron_config.max_tokens,
         }
     }
 
     try:
-        # Note: Using settings.OLLAMA_URL which we set to port 11435
-        # Ensure we don't have double slash issues
         base_url = settings.OLLAMA_URL.rstrip('/')
         
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(
                 f"{base_url}/api/chat", 
                 json=payload
@@ -154,18 +160,17 @@ async def chat(request: ChatRequest):
             
         if response.status_code == 200:
             data = response.json()
-            # Mapping the correct Ollama key: ['message']['content']
             ai_text = data.get('message', {}).get('content', "Err: Empty buffer.")
             
             return ChatResponse(
                 response=ai_text,
                 persona="HADRON",
                 routing="LOCAL",
-                model_used="llama3.2:latest",
+                model_used=model,
                 complexity_score=decision_score
             )
         else:
-             return ChatResponse(
+            return ChatResponse(
                 response=f"[COMM-FAILURE] Ollama returned {response.status_code}",
                 persona="ERROR",
                 routing="NONE",

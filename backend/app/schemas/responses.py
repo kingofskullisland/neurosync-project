@@ -1,11 +1,16 @@
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
+class ChatMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+
 class ChatRequest(BaseModel):
     prompt: str
     model: Optional[str] = None
     image: Optional[str] = None  # Base64
     screen: Optional[str] = None  # Base64
+    history: Optional[List[ChatMessage]] = None  # Prior conversation turns
 
 class ChatResponse(BaseModel):
     response: str

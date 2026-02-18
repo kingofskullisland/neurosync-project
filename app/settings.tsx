@@ -25,7 +25,6 @@ import { AkiraTitle } from '../components/GlitchText';
 import { ModelMonitor } from '../components/ModelMonitor';
 import { ModelPicker } from '../components/ModelPicker';
 import { NeonButton } from '../components/NeonButton';
-import { QRScanner } from '../components/QRScanner';
 import { StatusPill } from '../components/StatusPill';
 import { buildUrl, checkHealth } from '../lib/api';
 import { FAQ_CATEGORIES, FAQ_DATA, FAQItem } from '../lib/faq';
@@ -72,6 +71,8 @@ export default function SettingsScreen() {
     const [beamStats, setBeamStats] = useState<BeamStats>(neurobeam.getStats());
     const [showQRScanner, setShowQRScanner] = useState(false);
     const [beamConfig, setBeamConfig] = useState<BeamConfig | null>(null);
+    const [isScanning, setIsScanning] = useState(false);
+    const [discoveredDevices, setDiscoveredDevices] = useState<DiscoveredDevice[]>([]);
 
     useEffect(() => {
         loadSettings().then((s) => {
@@ -336,6 +337,83 @@ export default function SettingsScreen() {
                         }}>
                             Target: {buildUrl(settings.vpnIp || settings.pcIp || 'localhost', settings.bridgePort)}
                         </Text>
+                    </View>
+
+                    {/* ──── NETWORK SCANNER ──── */}
+                    <View style={{ marginTop: 16, borderTopWidth: 1, borderTopColor: COLORS.BORDER, paddingTop: 12 }}>
+                        <NeonButton
+                            title={isScanning ? '◌ SCANNING...' : '🔍 SCAN NETWORK'}
+                            onPress={async () => {
+                                setIsScanning(true);
+                                setDiscoveredDevices([]);
+                                try {
+                                    const devices = await quickScan((device) => {
+                                        setDiscoveredDevices((prev) => [...prev, device]);
+                                    });
+                                    if (devices.length === 0) {
+                                        setDiscoveredDevices([]);
+                                    }
+                                } catch (e) {
+                                    console.error('Scan error:', e);
+                                } finally {
+                                    setIsScanning(false);
+                                }
+                            }}
+                            loading={isScanning}
+                            variant="green"
+                            icon="📡"
+                        />
+                        {discoveredDevices.length > 0 && (
+                            <View style={{ marginTop: 8 }}>
+                                <Text style={{ color: COLORS.TEXT_MED, fontFamily: 'monospace', fontSize: 10, marginBottom: 6 }}>
+                                    DISCOVERED ENDPOINTS ({discoveredDevices.length}):
+                                </Text>
+                                {discoveredDevices.map((device, idx) => (
+                                    <Pressable
+                                        key={idx}
+                                        onPress={() => {
+                                            updateSetting('pcIp', device.ip);
+                                            if (device.ip.startsWith('100.')) {
+                                                updateSetting('vpnIp', device.ip);
+                                            }
+                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                        }}
+                                        style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            paddingVertical: 8,
+                                            paddingHorizontal: 10,
+                                            marginBottom: 4,
+                                            borderWidth: 1,
+                                            borderColor: COLORS.BORDER,
+                                            borderRadius: 4,
+                                            backgroundColor: COLORS.PANEL,
+                                            borderLeftWidth: 4,
+                                            borderLeftColor: device.bridgeAvailable ? COLORS.GREEN : COLORS.AMBER,
+                                        }}
+                                    >
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ color: COLORS.TEXT_BRIGHT, fontFamily: 'monospace', fontSize: 13 }}>
+                                                {device.ip}
+                                            </Text>
+                                            <Text style={{ color: COLORS.TEXT_DIM, fontFamily: 'monospace', fontSize: 9, marginTop: 2 }}>
+                                                {device.bridgeAvailable ? '✓ Bridge' : '✗ Bridge'}
+                                                {'  '}
+                                                {device.ollamaAvailable ? `✓ Ollama (${device.ollamaPort})` : '✗ Ollama'}
+                                                {'  '}
+                                                {device.responseTime}ms
+                                            </Text>
+                                        </View>
+                                        <Text style={{ color: COLORS.TEAL, fontSize: 12 }}>TAP ▸</Text>
+                                    </Pressable>
+                                ))}
+                            </View>
+                        )}
+                        {isScanning && discoveredDevices.length === 0 && (
+                            <Text style={{ color: COLORS.TEXT_DIM, fontFamily: 'monospace', fontSize: 10, textAlign: 'center', marginTop: 8 }}>
+                                Probing local subnets...
+                            </Text>
+                        )}
                     </View>
                 </MenuSection>
 

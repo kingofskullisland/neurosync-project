@@ -4,26 +4,47 @@
 
 @layer utilities {
 
-  /* CRT Scanline Overlay — visual effect applied via RN components, not CSS gradients */
+  /* ─── Adeptus Mechanicus Cogitator Terminal ─── */
+
+  /* CRT Scanline Overlay — visual effect applied via RN components */
   .crt-overlay {
     opacity: 0.95;
   }
 
-  /* Phosphor Ghosting/Glow */
+  /* Phosphor Ghosting/Glow — Cathode Green data streams */
   .phosphor-text {
     color: #00ff41;
   }
 
-  /* Red Alert Glow */
+  /* Red Alert — Sanctified Error */
   .alert-text {
-    color: #ff4500;
+    color: #C41E3A;
   }
 
-  /* Heavy Industrial Border */
+  /* Cogitator Terminal — Green phosphor on dark steel */
+  .cogitator-terminal {
+    background-color: #080908;
+    color: #00ff41;
+    border-width: 2px;
+    border-color: #435043;
+    border-style: solid;
+  }
+
+  /* Heavy Industrial Border — Forge World panel edge */
   .mechanicus-border {
     border-color: #2d382d;
     border-width: 2px;
     border-top-width: 8px;
+    border-style: solid;
+  }
+
+  /* Forge Panel — Riveted industrial enclosure */
+  .forge-panel {
+    background-color: #121412;
+    border-width: 2px;
+    border-color: #435043;
+    border-left-width: 6px;
+    border-left-color: #8B652E;
     border-style: solid;
   }
 
@@ -36,17 +57,36 @@
     border-left-color: #8BA38B;
   }
 
-  /* Hazard Stripe Detail — uses solid gold on RN (gradient applied via component if needed) */
+  /* Brass Accent — Mechanicus gold/brass trim */
+  .brass-accent {
+    border-color: #8B652E;
+    border-width: 1px;
+    border-bottom-width: 3px;
+    border-bottom-color: #A88B34;
+    border-style: solid;
+  }
+
+  /* Hazard Stripe — Warning chevrons */
   .hazard-stripe {
     background-color: #FFB900;
   }
 
-  /* Etched Inset */
+  /* Etched Inset — Recessed data viewport */
   .etched-inset {
     background-color: #080908;
     border-width: 1px;
     border-color: #1E231E;
   }
+
+  /* Parchment Label — Tech-priest scroll text */
+  .parchment-text {
+    color: #C4B99A;
+  }
+
+  /* Sacred Machine Oil — Deep inset background */
+  .holy-oil-bg {
+    background-color: #1A120B;
+  }
 }
 
-/* Animations defined in tailwind.config.js usually, but can live here for native if needed */
+/* Animations defined in tailwind.config.js */

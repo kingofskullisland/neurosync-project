@@ -1,6 +1,7 @@
 /**
- * NeuroSync — Akira Theme Constants
- * Inspired by Akira (1988) anime aesthetic
+ * NeuroSync — Adeptus Mechanicus Theme Constants
+ * Inspired by the Forge Worlds of the Omnissiah
+ * "The Machine God watches over all."
  */
 import { Platform, ViewStyle } from 'react-native';
 
@@ -48,6 +49,28 @@ export const STATUS = {
     OFFLINE: 'offline',
     CONNECTING: 'connecting',
     ERROR: 'error',
+};
+
+/** Adeptus Mechanicus — Forge World Extended Palette */
+export const MECHANICUS = {
+    // Structural
+    WORN_METAL: '#4A4A42',      // Weathered adamantium
+    RIVET_STEEL: '#5C5C52',     // Forged rivets
+    RUST: '#6B3A2A',            // Oxidized iron
+    PARCHMENT: '#C4B99A',       // Tech-priest scrollwork
+    HOLY_OIL: '#1A120B',        // Sacred machine oil
+    DARK_IRON: '#141414',       // Void-black iron
+
+    // Glow effects
+    INCENSE_GLOW: '#D4A017',    // Burning incense
+    FORGE_EMBER: '#E25822',     // Forge furnace
+    PHOSPHOR_GREEN: '#00FF41',  // Cathode / data streams
+    WARP_RED: '#8B0000',        // Warning / sanctified error
+
+    // Accent borders
+    BRASS_TRIM: '#8B652E',      // Mechanicus brass inlay
+    COPPER_TRACE: '#B87333',    // Circuit trace copper
+    AQUILA_GOLD: '#D4AF37',     // Imperial double-headed eagle
 };
 
 /** Elevation/shadow helpers for Android depth */

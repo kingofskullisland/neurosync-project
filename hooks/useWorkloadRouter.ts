@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { useNoosphere } from '../context/NoosphereContext';
+import { sendChat } from '../lib/api';
+import { loadSettings } from '../lib/storage';
 
 /**
  * useWorkloadRouter
  *
- * Decides whether to process AI prompts locally on the phone
- * or offload to the tethered desktop (Pop!_OS / Ollama).
- *
- * When tethered:  POST → http://<desktop-ip>:8000/api/tether/chat
- * When local:     Uses on-device llama.cpp or returns a fallback.
+ * Routes AI prompts through the backend bridge which applies
+ * the Hadron persona and conversation history, then forwards to Ollama.
  */
 export const useWorkloadRouter = () => {
     const {
@@ -28,43 +27,27 @@ export const useWorkloadRouter = () => {
         let responseText = '';
 
         try {
-            // ─── BRANCH 1: TETHERED MODE (Desktop handles the thinking) ───
-            if (inferenceMode === 'tethered' && upstreamUrl) {
-                console.log('⚡ Offloading to Desktop...');
+            const settings = await loadSettings();
+            const ip = settings.vpnIp || settings.pcIp;
+            const model = settings.selectedModel || 'llama3.2:latest';
 
-                const resp = await fetch(`${upstreamUrl}/api/tether/chat`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`,
-                    },
-                    body: JSON.stringify({
-                        model: activeAgent,
-                        messages: [...history, { role: 'user', content: userMessage }],
-                    }),
-                });
-
-                if (!resp.ok) throw new Error('Desktop unreachable');
-
-                const data = await resp.json();
-                responseText = data.message?.content ?? data.response ?? '';
-
-                // ─── BRANCH 2: LOCAL MODE (Phone tries its best) ──────────────
-            } else {
-                console.log('🐌 Processing Locally...');
-
-                // Guard: Prevent running models that are too large for mobile
-                if (activeAgent.includes('70b') || activeAgent.includes('command-r')) {
-                    responseText = '⚠️ Model too large for device. Please Beam to Desktop.';
-                } else {
-                    // TODO: Replace with actual local llama.rn / llama.cpp call
-                    responseText = 'I am thinking locally... (Simulated Response)';
-                }
+            if (!ip) {
+                responseText = '⚠️ No server IP configured. Go to Settings → Uplink Protocols.';
+                return responseText;
             }
 
-        } catch (error) {
+            // Convert ChatMessage[] to simple {role, content}[] for the API
+            const historyPayload = history
+                .filter((m: any) => m.role === 'user' || m.role === 'assistant')
+                .slice(-20)
+                .map((m: any) => ({ role: m.role, content: m.content }));
+
+            const result = await sendChat(ip, userMessage, model, historyPayload);
+            responseText = result.response;
+
+        } catch (error: any) {
             console.error('Workload Error:', error);
-            responseText = '⚠️ Error: Connection to Noosphere Desktop lost.';
+            responseText = `⚠️ ${error.message || 'Connection to Noosphere lost.'}`;
         } finally {
             setLoading(false);
         }

@@ -132,7 +132,8 @@ export async function getModels(ip: string): Promise<ModelsResponse> {
 export async function sendChat(
     ip: string,
     prompt: string,
-    model: string = 'llama3'
+    model: string = 'llama3',
+    history?: { role: string; content: string }[]
 ): Promise<ChatResponse> {
     // Abort any previous in-flight chat request
     if (activeChatController) {
@@ -144,12 +145,17 @@ export async function sendChat(
     const url = `${buildUrl(ip)}/chat`;
 
     try {
+        const body: Record<string, unknown> = { prompt, model };
+        if (history && history.length > 0) {
+            body.history = history;
+        }
+
         const response = await fetchWithTimeout(
             url,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt, model }),
+                body: JSON.stringify(body),
                 signal: currentController.signal,
             },
             CHAT_TIMEOUT
