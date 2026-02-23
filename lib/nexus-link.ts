@@ -11,6 +11,8 @@ export interface NexusResponse {
     handledLocally: boolean;
     content: string;
     action?: string;
+    /** If set, HyperAI wants the PC to process this prompt on its behalf */
+    syntheticPrompt?: string;
 }
 
 export const HyperAI = {
@@ -79,7 +81,71 @@ export const HyperAI = {
             }
         }
 
-        // No local match -> Forward to Tier 2 (Backend)
+        // ─── DELEGATION TRIGGERS ──────────────────────────────────
+        // HyperAI intercepts these locally but constructs a synthetic
+        // prompt to offload heavy compute to the PC-side model.
+
+        // --- DEEP RESEARCH / ANALYSIS ---
+        if (lower.includes('research') || lower.includes('analyze') || lower.includes('analyse') || lower.includes('deep dive')) {
+            return {
+                handledLocally: true,
+                content: "[HYPER-AI] Heavy cogitation detected. Routing to PC Logic Engine for deep analysis...",
+                action: "DELEGATE_TO_PC",
+                syntheticPrompt: `The user requests a thorough analysis. Their query: "${input}". Provide a detailed, structured response with key findings, implications, and actionable insights.`
+            };
+        }
+
+        // --- CODE GENERATION / DEBUGGING ---
+        if (lower.includes('write code') || lower.includes('debug') || lower.includes('write a script') || lower.includes('fix this code') || lower.includes('refactor')) {
+            return {
+                handledLocally: true,
+                content: "[HYPER-AI] Code generation request intercepted. Delegating to PC Logic Engine...",
+                action: "DELEGATE_TO_PC",
+                syntheticPrompt: `The user needs code assistance. Their request: "${input}". Provide clean, well-commented code with explanations.`
+            };
+        }
+
+        // --- SUMMARIZATION ---
+        if (lower.includes('summarize') || lower.includes('summarise') || lower.includes('tldr') || lower.includes('sum up')) {
+            return {
+                handledLocally: true,
+                content: "[HYPER-AI] Summarization request logged. Offloading to PC for processing...",
+                action: "DELEGATE_TO_PC",
+                syntheticPrompt: `The user wants a concise summary. Their input: "${input}". Provide a clear, bullet-pointed summary capturing all key points.`
+            };
+        }
+
+        // --- EXPLANATION ---
+        if (lower.includes('explain') || lower.includes('how does') || lower.includes('what is') || lower.includes('define')) {
+            return {
+                handledLocally: true,
+                content: "[HYPER-AI] Knowledge query detected. Consulting PC Logic Engine...",
+                action: "DELEGATE_TO_PC",
+                syntheticPrompt: `The user is asking for an explanation. Their question: "${input}". Provide a clear, thorough explanation suitable for someone with intermediate technical knowledge.`
+            };
+        }
+
+        // --- COMPARISON ---
+        if (lower.includes('compare') || lower.includes('difference between') || lower.includes('vs') || lower.includes('versus')) {
+            return {
+                handledLocally: true,
+                content: "[HYPER-AI] Comparative analysis requested. Delegating to PC...",
+                action: "DELEGATE_TO_PC",
+                syntheticPrompt: `The user wants a comparison. Their query: "${input}". Provide a structured comparison with pros, cons, and a recommendation.`
+            };
+        }
+
+        // --- TRANSLATION ---
+        if (lower.includes('translate') || lower.includes('translation')) {
+            return {
+                handledLocally: true,
+                content: "[HYPER-AI] Translation request intercepted. Routing to PC Logic Engine...",
+                action: "DELEGATE_TO_PC",
+                syntheticPrompt: `The user needs a translation. Their request: "${input}". Provide an accurate translation and note any nuances.`
+            };
+        }
+
+        // No local match -> Forward to Tier 2 (Backend) directly
         return { handledLocally: false, content: "" };
     }
 };

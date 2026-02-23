@@ -153,7 +153,7 @@ export default function ChatScreen() {
 
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
 
-    // TIER 1: HYPER-AI (Local Triage)
+    // TIER 1: HYPER-AI (Local Triage + Orchestrator)
     try {
       const triage = await HyperAI.triage(userMsg.content);
       if (triage.handledLocally) {
@@ -165,10 +165,37 @@ export default function ChatScreen() {
           model: 'HyperAI',
           timestamp: Date.now(),
         };
-        const allMsgs = [...newMessages, reflexMsg];
-        setMessages(allMsgs);
-        await autoSave(allMsgs);
+        const withReflex = [...newMessages, reflexMsg];
+        setMessages(withReflex);
         setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+
+        // ORCHESTRATOR: If HyperAI wants the PC to handle the heavy lifting
+        if (triage.action === 'DELEGATE_TO_PC' && triage.syntheticPrompt) {
+          const pcStartTime = Date.now();
+          const pcResponse = await processMessage(triage.syntheticPrompt, withReflex);
+          const pcElapsed = Date.now() - pcStartTime;
+
+          const pcMsg: ChatMessage = {
+            id: (Date.now() + 2).toString(),
+            role: 'assistant',
+            content: pcResponse,
+            route: 'PC',
+            model: settings?.pcModel || settings?.selectedModel || 'PC Model',
+            timestamp: Date.now(),
+          };
+          const allMsgs = [...withReflex, pcMsg];
+          setMessages(allMsgs);
+          await autoSave(allMsgs);
+
+          if (settings?.modelMonitoring) {
+            await recordModelRequest(settings.pcModel || settings.selectedModel, pcElapsed, false);
+          }
+          setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+          return;
+        }
+
+        // Pure local action (no delegation needed)
+        await autoSave(withReflex);
         return;
       }
     } catch (e) {
