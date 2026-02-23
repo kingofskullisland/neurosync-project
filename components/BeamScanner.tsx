@@ -92,12 +92,12 @@ export default function BeamScanner({ onClose, onScan }: BeamScannerProps) {
     const handleBarcodeScanned = ({ data }: { data: string }) => {
         if (processingRef.current) return;
 
-        // Allow all payloads if external onScan is provided
-        if (!onScan && !data.startsWith('noosphere://') && !data.startsWith('http')) {
-            // Basic JSON check for tethering
-            if (!data.trim().startsWith('{')) {
-                return;
-            }
+        // Allow noosphere:// deep links, http/https URLs, and JSON configs
+        const isJson = data.trim().startsWith('{');
+
+        // If external onScan is provided, allow all payloads, otherwise filter
+        if (!onScan && !data.startsWith('noosphere://') && !data.startsWith('http') && !isJson) {
+            return;
         }
 
         processingRef.current = true;
