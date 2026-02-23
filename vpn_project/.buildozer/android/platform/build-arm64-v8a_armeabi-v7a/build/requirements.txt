@@ -1,0 +1,10 @@
+certifi
+chardet
+click
+idna
+itsdangerous
+jinja2
+markupsafe
+requests
+urllib3
+werkzeug
