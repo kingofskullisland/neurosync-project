@@ -28,11 +28,24 @@ export const useWorkloadRouter = () => {
 
         try {
             const settings = await loadSettings();
-            const ip = settings.vpnIp || settings.pcIp;
-            const model = settings.selectedModel || 'llama3.2:latest';
+            const routeMode = settings.routeMode || 'auto';
+            let ip = '';
+            let model = '';
 
-            if (!ip) {
-                responseText = '⚠️ No server IP configured. Go to Settings → Uplink Protocols.';
+            if (routeMode === 'local') {
+                ip = 'localhost';
+                model = settings.localModel || 'HyperAI';
+            } else if (routeMode === 'cloud') {
+                ip = settings.vpnIp || settings.pcIp; // Bridge might handle cloud proxy
+                model = settings.cloudModel || 'gpt-4o';
+            } else {
+                // pc or auto
+                ip = settings.vpnIp || settings.pcIp;
+                model = settings.pcModel || settings.selectedModel || 'llama3.2:latest';
+            }
+
+            if (!ip && routeMode !== 'local') {
+                responseText = `⚠️ No server IP configured for ${routeMode.toUpperCase()} routing. Go to Settings → Uplink Protocols.`;
                 return responseText;
             }
 

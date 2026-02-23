@@ -57,6 +57,9 @@ export default function SettingsScreen() {
         batteryThreshold: 20,
         charThreshold: 100,
         selectedModel: 'llama3.2:latest',
+        localModel: 'Nexus-Link',
+        pcModel: 'llama3.2:latest',
+        cloudModel: 'gpt-4o',
         fontSize: 13,
         autoSaveChats: true,
         modelMonitoring: true,
@@ -430,22 +433,36 @@ export default function SettingsScreen() {
                     </Text>
                     <ModelPicker
                         serverIp={settings.vpnIp || settings.pcIp}
-                        selectedModel={settings.selectedModel}
-                        onSelectModel={(m) => updateSetting('selectedModel', m)}
+                        selectedModel={settings.pcModel || settings.selectedModel}
+                        onSelectModel={(m) => updateSetting('pcModel', m)}
                     />
                     <View style={{ marginTop: 12 }}>
                         <InputField
-                            label="MANUAL MODEL NAME"
-                            value={settings.selectedModel}
-                            onChangeText={(v) => updateSetting('selectedModel', v)}
+                            label="LOCAL MODEL"
+                            value={settings.localModel}
+                            onChangeText={(v) => updateSetting('localModel', v)}
+                            placeholder="Nexus-Link"
+                            hint="Model used for local on-device processing"
+                        />
+                        <InputField
+                            label="PC MODEL"
+                            value={settings.pcModel}
+                            onChangeText={(v) => updateSetting('pcModel', v)}
                             placeholder="llama3.2:latest"
-                            hint="Type a model name if not listed above"
+                            hint="Model used when routing to PC Bridge"
+                        />
+                        <InputField
+                            label="CLOUD MODEL"
+                            value={settings.cloudModel}
+                            onChangeText={(v) => updateSetting('cloudModel', v)}
+                            placeholder="gpt-4o"
+                            hint="Model used for cloud API routing"
                         />
                     </View>
                     {settings.modelMonitoring && (
                         <View style={{ marginTop: 12 }}>
                             <Text style={styles.subsectionTitle}>MODEL ACTIVITY</Text>
-                            <ModelMonitor modelName={settings.selectedModel} />
+                            <ModelMonitor modelName={settings.pcModel || settings.selectedModel} />
                         </View>
                     )}
                     <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -638,7 +655,7 @@ export default function SettingsScreen() {
                         <InfoRow label="Construct" value="NeuroSync v1.0.0" />
                         <InfoRow label="Aesthetic" value="Grimdark | Mechanicus" />
                         <InfoRow label="Bridge Port" value={String(settings.bridgePort)} />
-                        <InfoRow label="Active Model" value={settings.selectedModel} />
+                        <InfoRow label="Active PC Model" value={settings.pcModel || settings.selectedModel} />
                         <InfoRow label="Route Mode" value={settings.routeMode.toUpperCase()} />
                         <InfoRow label="Saved Chats" value={String(chatCount)} />
                     </View>

@@ -18,6 +18,9 @@ export interface AppSettings {
     batteryThreshold: number;
     charThreshold: number;
     selectedModel: string;
+    localModel: string;
+    pcModel: string;
+    cloudModel: string;
     // New settings
     fontSize: number;
     autoSaveChats: boolean;
@@ -33,6 +36,9 @@ const DEFAULT_SETTINGS: AppSettings = {
     batteryThreshold: 20,
     charThreshold: 100,
     selectedModel: 'llama3.2:latest',
+    localModel: 'HyperAI',
+    pcModel: 'llama3.2:latest',
+    cloudModel: 'gpt-4o',
     fontSize: 13,
     autoSaveChats: true,
     modelMonitoring: true,

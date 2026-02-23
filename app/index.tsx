@@ -17,6 +17,7 @@ import {
   View,
   ViewStyle
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import BeamScanner from '../components/BeamScanner';
 import { ChatBubble } from '../components/ChatBubble';
 import { CRTScreen } from '../components/CRTScreen';
@@ -29,7 +30,7 @@ import TetherStatus from '../components/TetherStatus';
 import { useNoosphere } from '../context/NoosphereContext';
 import { useWorkloadRouter } from '../hooks/useWorkloadRouter';
 import { checkHealth } from '../lib/api';
-import { NexusLink } from '../lib/nexus-link';
+import { HyperAI } from '../lib/nexus-link';
 import { RouteTarget } from '../lib/router';
 import {
   AppSettings,
@@ -152,16 +153,16 @@ export default function ChatScreen() {
 
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
 
-    // TIER 1: NEXUS-LINK (Local Triage) - Keeping this for quick local checks
+    // TIER 1: HYPER-AI (Local Triage)
     try {
-      const triage = await NexusLink.triage(userMsg.content);
+      const triage = await HyperAI.triage(userMsg.content);
       if (triage.handledLocally) {
         const reflexMsg: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: triage.content,
           route: 'LOCAL',
-          model: 'Nexus-Link',
+          model: 'HyperAI',
           timestamp: Date.now(),
         };
         const allMsgs = [...newMessages, reflexMsg];
@@ -171,7 +172,7 @@ export default function ChatScreen() {
         return;
       }
     } catch (e) {
-      console.log('Nexus Link Triage Error:', e);
+      console.log('HyperAI Triage Error:', e);
     }
 
     // TIER 2/3: WORKLOAD ROUTER (Local vs Tethered)
@@ -233,7 +234,7 @@ export default function ChatScreen() {
 
   return (
     <CRTScreen>
-      <View className="flex-1">
+      <SafeAreaView className="flex-1" edges={['top', 'bottom', 'left', 'right']}>
         <Modal
           visible={isScanning}
           animationType="fade"
@@ -321,7 +322,7 @@ export default function ChatScreen() {
         )}
 
         {/* INPUT AREA */}
-        <View className={`border-t-2 border-mechanicus-brass bg-mechanicus-plate p-3 ${keyboardVisible ? 'pb-3' : 'pb-8'}`}>
+        <View className={`border-t-2 border-mechanicus-brass bg-mechanicus-plate p-3 ${keyboardVisible ? 'pb-3' : 'pb-[40px]'}`}>
           <View className="flex-row items-end space-x-2">
             <TextInput
               ref={inputRef}
@@ -351,7 +352,7 @@ export default function ChatScreen() {
         {/* FOOTER */}
         <StatusSlate />
         <NoosphericStream />
-      </View >
-    </CRTScreen >
+      </SafeAreaView>
+    </CRTScreen>
   );
 }

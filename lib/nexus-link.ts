@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import AndroidOpenSettings from 'react-native-android-open-settings';
 
 /**
- * Nexus-Link: Tier 1 Local Triage Agent
+ * HyperAI: Tier 1 Local Triage Agent
  * Handles device-level reflexes (Wi-Fi, Bluetooth, Settings) without server latency.
  */
 
@@ -13,7 +13,7 @@ export interface NexusResponse {
     action?: string;
 }
 
-export const NexusLink = {
+export const HyperAI = {
     /**
      * Analyze input for local intent.
      * If matched, executes action and returns instant response.
@@ -26,7 +26,7 @@ export const NexusLink = {
         if (lower.includes('what can you do') || lower.includes('capabilities') || lower.includes('help')) {
             return {
                 handledLocally: true,
-                content: "[NEXUS-LINK PROTOCOL] Ident confirmed. My local reflexes can actuate: Wi-Fi, Bluetooth, Location, and General Settings. For complex logic, I forward your queries to the PC-side Overseer. Speak, Citizen.",
+                content: "[HYPER-AI PROTOCOL] Ident confirmed. My local reflexes can actuate: Wi-Fi, Bluetooth, Location, and General Settings. For complex logic, I forward your queries to the PC-side Overseer. Speak, Citizen.",
                 action: "HELP"
             };
         }
