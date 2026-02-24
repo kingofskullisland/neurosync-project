@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">Python VPN</string>
-    <string name="private_version">347d79df6c9bc324e1d19f22ab65f0e20b1a2775</string>
-    <string name="presplash_color">#000000</string>
-    <string name="urlScheme">kivy</string>
-</resources>
