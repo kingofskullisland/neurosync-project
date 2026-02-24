@@ -15,15 +15,19 @@ import socket
 from datetime import datetime
 from typing import Optional
 
-import aiohttp
+import requests
 import qrcode
 import websockets
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+import pc_executor
+import session_manager
+
 # ─── Configuration ──────────────────────────────────────────
 
 BRIDGE_PORT = 8083
-OLLAMA_URL = "http://localhost:11434"
+ANYTHING_LLM_URL = "http://localhost:3001/api/v1/workspace/neurosync-router/chat"
+API_KEY = "1CCFH8V-JE24X79-GC5ZCT4-93WEN34"
 SESSION_TIMEOUT = 3600  # 1 hour
 
 # ─── CLI Arguments ──────────────────────────────────────────
@@ -120,7 +124,7 @@ class NeuroBeamBridge:
         print("="*60)
         print(f"\n  Session ID: {self.session_id}")
         print(f"  Host IP:    {self.host_ip}:{self.port}")
-        print(f"  Ollama:     {OLLAMA_URL}")
+        print(f"  AnythingLLM: {ANYTHING_LLM_URL}")
         print(f"\n  Scan this QR code with NeuroSync mobile app:\n")
         
         qr.print_ascii(invert=True)
@@ -160,30 +164,27 @@ class NeuroBeamBridge:
         except Exception as e:
             print(f"[ERROR] Handshake failed: {e}")
             return False
-    
-    async def proxy_to_ollama(self, request: dict) -> dict:
-        """Forward request to Ollama and return response."""
-        try:
-            method = request.get("method", "GET")
-            path = request.get("path", "/")
-            body = request.get("body")
-            
-            url = f"{OLLAMA_URL}{path}"
-            
-            async with aiohttp.ClientSession() as session:
-                if method == "POST":
-                    async with session.post(url, json=body, timeout=aiohttp.ClientTimeout(total=120)) as resp:
-                        data = await resp.json()
-                        return {"status": resp.status, "data": data}
-                else:
-                    async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                        data = await resp.json()
-                        return {"status": resp.status, "data": data}
+    def query_machine_spirit(self, prompt: str) -> dict:
+        """Queries AnythingLLM for routing directives."""
+        headers = {
+            "Authorization": f"Bearer {API_KEY}", 
+            "Content-Type": "application/json"
+        }
+        payload = {"message": prompt, "mode": "chat"}
         
-        except asyncio.TimeoutError:
-            return {"status": 504, "error": "Ollama timeout"}
+        try:
+            response = requests.post(ANYTHING_LLM_URL, headers=headers, json=payload, timeout=30)
+            if response.status_code == 200:
+                text = response.json().get('textResponse', '{}')
+                # Sanitize in case the LLM wraps the JSON in markdown code blocks
+                text = text.replace('```json', '').replace('```', '').strip()
+                return json.loads(text)
+            else:
+                 print(f"AnythingLLM Error: {response.text}")
         except Exception as e:
-            return {"status": 500, "error": str(e)}
+            print(f"Logic fault: {e}")
+            
+        return {"target": "error", "action": "api_fault"}
     
     async def handle_client(self, websocket, path):
         """Handle WebSocket connection from mobile client."""
@@ -213,18 +214,58 @@ class NeuroBeamBridge:
                         self.session.last_ping = datetime.now()
                         response = {"type": "pong", "timestamp": datetime.now().isoformat()}
                     
-                    elif msg_type == "request":
-                        # Proxy to Ollama
-                        print(f"[{datetime.now().strftime('%H:%M:%S')}] → {request.get('path', '/')}")
-                        ollama_response = await self.proxy_to_ollama(request)
-                        response = {"type": "response", "data": ollama_response}
-                    
+                    elif msg_type == "user_intent":
+                        intent = request.get("payload")
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] Intercepted intent: {intent}")
+                        
+                        # 1. Consult the Cogitator (AnythingLLM)
+                        routing = self.query_machine_spirit(intent)
+                        target = routing.get("target")
+                        action = routing.get("action")
+                        params = routing.get("params", {})
+                        
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] Routing directive: {target} -> {action}")
+            
+                        # 2. Execute or Forward Payload
+                        result = {"status": "failed"}
+                        if target == "windows":
+                            result = pc_executor.execute(action, params)
+                        elif target == "remote":
+                            if action == "ssh_command":
+                                result = await session_manager.ssh_command(params.get("host"), params.get("command"))
+                            elif action == "rdp_launch":
+                                result = session_manager.rdp_launch(params.get("host"))
+                        elif target == "android":
+                            # Bounce payload to the mobile device
+                            device_command = {
+                                "type": "device_command",
+                                "action": action,
+                                "params": params
+                            }
+                            # Send encrypted command back down the tunnel
+                            encrypted_cmd = self.session.crypto.encrypt(json.dumps(device_command))
+                            await websocket.send(json.dumps(encrypted_cmd))
+                            continue # Wait for Android Executor to report back via device_result or execution_result
+            
+                        # 3. Return local execution confirmation to UI
+                        exec_result = {
+                            "type": "execution_result", 
+                            "target": target, 
+                            "result": result
+                        }
+                        encrypted_exec = self.session.crypto.encrypt(json.dumps(exec_result))
+                        await websocket.send(json.dumps(encrypted_exec))
+
+                    elif msg_type == "device_result" or msg_type == "execution_result":
+                         print(f"[{datetime.now().strftime('%H:%M:%S')}] Device reported result: {request}")
+                         # Forward the execution result so the TerminalView UI logs it
+                         encrypted_exec = self.session.crypto.encrypt(json.dumps(request))
+                         await websocket.send(json.dumps(encrypted_exec))
+
                     else:
                         response = {"type": "error", "error": "Unknown message type"}
-                    
-                    # Encrypt and send response
-                    encrypted = self.session.crypto.encrypt(json.dumps(response))
-                    await websocket.send(json.dumps(encrypted))
+                        encrypted_resp = self.session.crypto.encrypt(json.dumps(response))
+                        await websocket.send(json.dumps(encrypted_resp))
                 
                 except json.JSONDecodeError:
                     print("[ERROR] Invalid JSON received")
