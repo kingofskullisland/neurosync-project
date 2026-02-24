@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Von Agent",
+    "slug": "von-agent",
+    "version": "1.0.0",
+    "scheme": "vonagent",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#050510",
+    "android": {
+      "package": "com.vonagent.nexus",
+      "adaptiveIcon": {
+        "backgroundColor": "#050510"
+      },
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": [
+        "BATTERY_STATS"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "be44f239-4644-4b0b-bcf9-ee16f12d1518"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.vonagent.nexus"
+    }
+  }
+}

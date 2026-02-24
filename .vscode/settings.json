@@ -1,0 +1,10 @@
+{
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",
+    "source.organizeImports": "explicit",
+    "source.sortMembers": "explicit"
+  },
+  "css.lint.unknownAtRules": "ignore",
+  "java.compile.nullAnalysis.mode": "automatic",
+  "git.ignoreLimitWarning": true
+}
