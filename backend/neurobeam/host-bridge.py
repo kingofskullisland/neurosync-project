@@ -3,10 +3,6 @@
 NeuroBeam Host Bridge
 Lightweight WebSocket bridge for NeuroSync mobile app → Ollama connection.
 Akira-inspired P2P tunnel with AES-256-GCM encryption.
-
-Now with AI Routing Logic:
-  - Intercepts LLM responses for JSON action payloads
-  - Routes to pc_executor (Windows), session_manager (SSH/RDP), or Android
 """
 import argparse
 import asyncio
@@ -14,14 +10,10 @@ import base64
 import hashlib
 import json
 import os
-import re
 import secrets
 import socket
 from datetime import datetime
-from typing import Any, Dict, Optional
-
-import pc_executor
-from session_manager import SessionManager
+from typing import Optional
 
 import aiohttp
 import qrcode
@@ -33,44 +25,6 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 BRIDGE_PORT = 8083
 OLLAMA_URL = "http://localhost:11434"
 SESSION_TIMEOUT = 3600  # 1 hour
-
-# ─── System Prompt for AI Routing ────────────────────────────
-
-ROUTING_SYSTEM_PROMPT = """You are an AI assistant connected to a NeuroSync system.
-When the user asks you to perform a device action (on Windows PC, Android phone, or a remote machine), you MUST respond with a JSON routing block embedded in your message.
-
-Format the routing block EXACTLY like this, on its own line:
-```neurosync
-{"target": "<target>", "action": "<action>", "params": {<optional params>}}
-```
-
-Targets and their available actions:
-- "windows": mute_audio, capture_screen, launch_app
-- "android": toggle_flashlight, capture_screen, open_camera, toggle_mic, launch_app, remote_start
-- "remote":  ssh_command (params: host, command, username), rdp_launch (params: host, username)
-
-Examples:
-User: "Mute my PC"
-You: "Muting system audio now.
-```neurosync
-{"target": "windows", "action": "mute_audio"}
-```"
-
-User: "Turn on my phone flashlight"
-You: "Activating flashlight on your device.
-```neurosync
-{"target": "android", "action": "toggle_flashlight"}
-```"
-
-User: "Check uptime on 192.168.1.50"
-You: "Checking uptime on that host.
-```neurosync
-{"target": "remote", "action": "ssh_command", "params": {"host": "192.168.1.50", "command": "uptime"}}
-```"
-
-If the user is NOT asking for a device action, respond normally without any routing block.
-Always include a natural language response WITH the routing block, never output only JSON.
-"""
 
 # ─── CLI Arguments ──────────────────────────────────────────
 
@@ -134,7 +88,6 @@ class NeuroBeamBridge:
         self.session_id = secrets.token_hex(16)
         self.session: Optional[BeamSession] = None
         self.host_ip = host_ip or self._get_local_ip()
-        self.session_manager = SessionManager()
     
     def _get_local_ip(self) -> str:
         """Get local network IP address."""
@@ -208,110 +161,24 @@ class NeuroBeamBridge:
             print(f"[ERROR] Handshake failed: {e}")
             return False
     
-    def _extract_routing_block(self, text: str) -> Optional[Dict[str, Any]]:
-        """Extract a neurosync routing block from LLM output."""
-        # Match ```neurosync ... ``` blocks
-        pattern = r'```neurosync\s*\n?(.+?)\n?```'
-        match = re.search(pattern, text, re.DOTALL)
-        if match:
-            try:
-                return json.loads(match.group(1).strip())
-            except json.JSONDecodeError:
-                pass
-        
-        # Fallback: try to find bare JSON with target/action keys
-        json_pattern = r'\{\s*"target"\s*:\s*"[^"]+"\s*,\s*"action"\s*:\s*"[^"]+"[^}]*\}'
-        match = re.search(json_pattern, text)
-        if match:
-            try:
-                return json.loads(match.group(0))
-            except json.JSONDecodeError:
-                pass
-        
-        return None
-
-    async def route_action(self, routing: Dict[str, Any], websocket) -> Dict[str, Any]:
-        """Route an action payload to the correct executor."""
-        target = routing.get("target", "")
-        action = routing.get("action", "")
-        params = routing.get("params", {})
-
-        print(f"[ROUTER] {datetime.now().strftime('%H:%M:%S')} → target={target} action={action}")
-
-        if target == "windows":
-            # Execute locally on Windows PC
-            return pc_executor.execute(action, params)
-
-        elif target == "remote":
-            # SSH/RDP session management
-            return await self.session_manager.execute(action, params)
-
-        elif target == "android":
-            # Forward command to connected Android device via WebSocket
-            device_command = {
-                "type": "device_command",
-                "action": action,
-                "params": params,
-                "timestamp": datetime.now().isoformat(),
-            }
-            if self.session and self.session.authenticated:
-                encrypted = self.session.crypto.encrypt(json.dumps(device_command))
-                await websocket.send(json.dumps(encrypted))
-                return {"success": True, "forwarded_to": "android", "action": action}
-            else:
-                return {"success": False, "error": "No authenticated Android device connected"}
-
-        else:
-            return {"success": False, "error": f"Unknown target: {target}"}
-
-    async def proxy_to_ollama(self, request: dict, websocket=None) -> dict:
-        """Forward request to Ollama, inject system prompt, and parse routing."""
+    async def proxy_to_ollama(self, request: dict) -> dict:
+        """Forward request to Ollama and return response."""
         try:
             method = request.get("method", "GET")
             path = request.get("path", "/")
-            body = request.get("body", {})
+            body = request.get("body")
             
-            # Inject routing system prompt for chat/generate endpoints
-            if method == "POST" and body and path in ("/api/generate", "/api/chat"):
-                if path == "/api/generate":
-                    existing_system = body.get("system", "")
-                    body["system"] = ROUTING_SYSTEM_PROMPT + "\n" + existing_system
-                elif path == "/api/chat":
-                    messages = body.get("messages", [])
-                    # Prepend system message if not already present
-                    has_system = any(m.get("role") == "system" for m in messages)
-                    if not has_system:
-                        messages.insert(0, {"role": "system", "content": ROUTING_SYSTEM_PROMPT})
-                        body["messages"] = messages
-
             url = f"{OLLAMA_URL}{path}"
             
             async with aiohttp.ClientSession() as session:
                 if method == "POST":
                     async with session.post(url, json=body, timeout=aiohttp.ClientTimeout(total=120)) as resp:
                         data = await resp.json()
+                        return {"status": resp.status, "data": data}
                 else:
                     async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
                         data = await resp.json()
-
-            # Parse LLM response for routing blocks
-            llm_text = ""
-            if isinstance(data, dict):
-                llm_text = data.get("response", "") or ""
-                # For chat endpoint
-                if not llm_text and "message" in data:
-                    llm_text = data["message"].get("content", "")
-
-            routing = self._extract_routing_block(llm_text)
-            route_result = None
-            if routing and websocket:
-                route_result = await self.route_action(routing, websocket)
-                print(f"[ROUTER] Action result: {json.dumps(route_result, default=str)[:200]}")
-
-            result = {"status": resp.status, "data": data}
-            if route_result:
-                result["route_result"] = route_result
-            return result
+                        return {"status": resp.status, "data": data}
         
         except asyncio.TimeoutError:
             return {"status": 504, "error": "Ollama timeout"}
@@ -345,21 +212,11 @@ class NeuroBeamBridge:
                         # Heartbeat
                         self.session.last_ping = datetime.now()
                         response = {"type": "pong", "timestamp": datetime.now().isoformat()}
-
-                    elif msg_type == "command":
-                        # Direct command from Android (bypass LLM)
-                        routing = {
-                            "target": request.get("target", "windows"),
-                            "action": request.get("action", ""),
-                            "params": request.get("params", {}),
-                        }
-                        cmd_result = await self.route_action(routing, websocket)
-                        response = {"type": "command_result", "data": cmd_result}
                     
                     elif msg_type == "request":
-                        # Proxy to Ollama (with routing interception)
+                        # Proxy to Ollama
                         print(f"[{datetime.now().strftime('%H:%M:%S')}] → {request.get('path', '/')}")
-                        ollama_response = await self.proxy_to_ollama(request, websocket)
+                        ollama_response = await self.proxy_to_ollama(request)
                         response = {"type": "response", "data": ollama_response}
                     
                     else:

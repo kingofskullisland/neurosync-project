@@ -1,0 +1,113 @@
+# AI-Driven Phone↔PC Command Routing
+
+Implement bidirectional LLM command routing using the **Noosphere** as the unified link layer. The PC host runs AI inference; commands route through the existing `NoosphereContext` tether system. **RDP/SSH sessions** provide the secure transport for model-to-model communication.
+
+## Architecture
+
+```mermaid
+graph LR
+    A["Android App<br/>(Neurosync)"] -->|NoosphereContext tether| B["SSH/RDP Tunnel"]
+    B -->|Encrypted session| C["PC Host<br/>(Snapdragon X Elite)"]
+    C -->|localhost| D["Ollama / LLM"]
+    D -->|JSON routing payload| C
+    C -->|target: android| A
+    C -->|target: windows| E["PC Executor"]
+```
+
+**Key change from previous plan:** Instead of raw WebSocket management, all communication flows through the existing `NoosphereContext` `activateTether` / `disconnectTether` system, tunneled over an **SSH or RDP session** so models talk securely without exposing ports to the LAN.
+
+## Supported Actions
+
+| Target | Action | Description |
+|--------|--------|-------------|
+| `windows` | `mute_audio` | Mute/unmute system audio |
+| `windows` | `capture_screen` | Screenshot the PC desktop |
+| `windows` | `launch_app` | Open a Windows application |
+| `android` | `toggle_flashlight` | Toggle phone flashlight |
+| `android` | `capture_screen` | Take a phone screenshot |
+| `android` | `open_camera` | Open the camera |
+| `android` | `toggle_mic` | Start/stop mic recording |
+| `android` | `launch_app` | Launch an Android app |
+| `android` | `remote_start` | Wake/keep-awake device |
+
+## Proposed Changes
+
+---
+
+### Noosphere Link Layer
+
+#### [MODIFY] [NoosphereContext.tsx](file:///c:/Git/neurosync-project/context/NoosphereContext.tsx)
+
+- Add `tunnelType: 'ssh' | 'rdp' | 'direct'` to state
+- Add `pendingDeviceCommand` state + `executeDeviceCommand()` dispatch
+- `activateTether()` now accepts tunnel type alongside URL/token
+- New `onDeviceCommand` callback that `deviceExecutor.ts` subscribes to
+
+#### [MODIFY] [useWorkloadRouter.ts](file:///c:/Git/neurosync-project/hooks/useWorkloadRouter.ts)
+
+- After receiving LLM response, parse it for `{"target": "...", "action": "..."}` JSON blocks
+- If found: dispatch through NoosphereContext instead of displaying as chat text
+- Pass `target: "android"` commands to `NoosphereContext.executeDeviceCommand()`
+- `target: "windows"` commands are already executed server-side before the response arrives
+
+---
+
+### PC Host — SSH/RDP Bridge + Executor
+
+#### [NEW] [pc_executor.py](file:///c:/Git/neurosync-project/backend/neurobeam/pc_executor.py)
+
+Windows action executor:
+
+- `mute_audio` → `pycaw` / `nircmd` toggle system mute
+- `capture_screen` → `mss` screenshot, saved to disk
+- `launch_app` → `subprocess.Popen`
+
+#### [MODIFY] [host-bridge.py](file:///c:/Git/neurosync-project/backend/neurobeam/host-bridge.py)
+
+- After Ollama responds, intercept JSON `{"target": "...", "action": "..."}` in the response text
+- `target: "windows"` → call `pc_executor` locally, attach result to response
+- `target: "android"` → wrap action as `type: "device_command"` message, send back over the Noosphere tunnel
+- Add system prompt injection that teaches the LLM the JSON routing format
+- Add `--tunnel ssh` / `--tunnel rdp` CLI flag to configure how the bridge listens:
+  - **SSH mode**: Bridge only accepts connections over SSH-forwarded ports (e.g., `ssh -L 8083:localhost:8083 user@pc-ip`)
+  - **RDP mode**: Bridge piggybacks on the RDP session's virtual channel
+
+---
+
+### Android Client — Device Executor
+
+#### [NEW] [deviceExecutor.ts](file:///c:/Git/neurosync-project/lib/deviceExecutor.ts)
+
+Subscribes to `NoosphereContext.onDeviceCommand`. Maps actions to native APIs:
+
+- `toggle_flashlight` → `expo-camera` torch
+- `capture_screen` → `expo-media-library` screenshot
+- `open_camera` → `expo-camera` launch
+- `toggle_mic` → `expo-av` Audio.Recording
+- `launch_app` → `Linking.openURL`
+- `remote_start` → `expo-keep-awake` activate
+
+#### [MODIFY] [neurobeam.ts](file:///c:/Git/neurosync-project/lib/neurobeam.ts)
+
+In `handleMessage()`, add branch for `message.type === 'device_command'` → dispatch to NoosphereContext instead of handling locally.
+
+---
+
+### Dependencies
+
+#### [MODIFY] [requirements.txt](file:///c:/Git/neurosync-project/backend/requirements.txt)
+
+Add `pycaw`, `mss`, `comtypes`, `paramiko` (for SSH tunnel management).
+
+#### package.json
+
+May need `expo-keep-awake` and `react-native-view-shot`.
+
+## Verification Plan
+
+### Manual Verification
+
+1. Start SSH tunnel: `ssh -L 8083:localhost:8083 user@pc-ip`
+2. Scan QR / tether via Noosphere
+3. Send "Mute my PC" → verify PC mutes
+4. Send "Turn on flashlight" → verify phone torch activates

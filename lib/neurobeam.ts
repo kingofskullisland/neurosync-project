@@ -2,7 +2,6 @@
  * NeuroBeam Client Module
  * P2P tunnel for NeuroSync mobile app → Desktop bridge connection
  * AES-256-GCM encrypted WebSocket transport
- * + Device command routing via Noosphere link
  */
 import { Buffer } from 'buffer';
 
@@ -10,6 +9,8 @@ import { Buffer } from 'buffer';
 if (typeof global.Buffer === 'undefined') {
     global.Buffer = Buffer;
 }
+
+import { executeDeviceCommand } from './deviceExecutor';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -40,7 +41,6 @@ export interface BeamStats {
 }
 
 type BeamListener = (stats: BeamStats) => void;
-type DeviceCommandHandler = (action: string, params: Record<string, any>) => Promise<any>;
 
 import { BeamCrypto } from './crypto';
 
@@ -67,7 +67,6 @@ export class NeuroBeam {
         resolve: (data: any) => void;
         reject: (error: Error) => void;
     }>();
-    deviceCommandHandler: DeviceCommandHandler | null = null;
 
     // ─── Connection Management ────────────────────────────────
 
@@ -165,31 +164,6 @@ export class NeuroBeam {
                 const now = Date.now();
                 const sent = message.timestamp ? new Date(message.timestamp).getTime() : now;
                 this.stats.latency = now - sent;
-            } else if (message.type === 'device_command') {
-                // ⚡ Device command from PC host → route through Noosphere
-                console.log(`⚡ [BEAM] Device command received: ${message.action}`);
-                if (this.deviceCommandHandler) {
-                    try {
-                        const result = await this.deviceCommandHandler(message.action, message.params || {});
-                        // Send result back to PC host
-                        await this.sendCommandResult(message.action, result);
-                    } catch (err: any) {
-                        await this.sendCommandResult(message.action, {
-                            success: false,
-                            error: err.message,
-                        });
-                    }
-                } else {
-                    console.warn('[BEAM] No device command handler registered');
-                }
-            } else if (message.type === 'command_result') {
-                // Result from a command we sent to the PC
-                const requestId = message.id || 'command';
-                const pending = this.pendingRequests.get(requestId);
-                if (pending) {
-                    pending.resolve(message.data);
-                    this.pendingRequests.delete(requestId);
-                }
             } else if (message.type === 'response') {
                 // Resolve pending request
                 const requestId = message.id || 'default';
@@ -198,6 +172,20 @@ export class NeuroBeam {
                     pending.resolve(message.data);
                     this.pendingRequests.delete(requestId);
                 }
+            } else if (message.type === 'device_command') {
+                const result = await executeDeviceCommand(message.action, message.params);
+
+                // Broadcast the result back to the Cogitator (PC)
+                await this.send({
+                    type: 'device_result',
+                    action: message.action,
+                    result: result
+                });
+
+                // Update local UI
+                this.notifyListenersWithPayload({ target: 'android', result });
+            } else if (message.type === 'execution_result') {
+                this.notifyListenersWithPayload(message);
             } else if (message.type === 'error') {
                 this.handleError(new Error(message.error));
             }
@@ -304,54 +292,6 @@ export class NeuroBeam {
         });
     }
 
-    /**
-     * Send a device command result back to the PC host.
-     */
-    async sendCommandResult(action: string, result: any): Promise<void> {
-        await this.send({
-            type: 'command_result',
-            action,
-            data: result,
-            timestamp: new Date().toISOString(),
-        });
-    }
-
-    /**
-     * Send a direct command to the PC host (bypass LLM).
-     */
-    async sendCommand(target: string, action: string, params: Record<string, any> = {}): Promise<any> {
-        const requestId = Math.random().toString(36).substring(7);
-        const payload = {
-            type: 'command',
-            id: requestId,
-            target,
-            action,
-            params,
-        };
-
-        return new Promise((resolve, reject) => {
-            this.pendingRequests.set(requestId, { resolve, reject });
-            this.send(payload).catch((error) => {
-                this.pendingRequests.delete(requestId);
-                reject(error);
-            });
-            setTimeout(() => {
-                if (this.pendingRequests.has(requestId)) {
-                    this.pendingRequests.delete(requestId);
-                    reject(new Error('Command timeout'));
-                }
-            }, 30000);
-        });
-    }
-
-    /**
-     * Register a handler for incoming device commands from the PC host.
-     * This should be called by NoosphereContext to wire up the Noosphere link.
-     */
-    setDeviceCommandHandler(handler: DeviceCommandHandler): void {
-        this.deviceCommandHandler = handler;
-    }
-
     // ─── State & Listeners ─────────────────────────────────────
 
     setState(newState: BeamState): void {
@@ -373,6 +313,15 @@ export class NeuroBeam {
 
     notifyListeners(): void {
         this.listeners.forEach((listener) => listener(this.getStats()));
+    }
+
+    notifyListenersWithPayload(payload: any): void {
+        // Broadcast custom payloads to UI listeners
+        this.listeners.forEach((listener) => listener(payload as any));
+    }
+
+    sendIntent(intent: string) {
+        this.send({ type: 'user_intent', payload: intent }).catch(e => this.handleError(e));
     }
 }
 

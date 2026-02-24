@@ -1,5 +1,5 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
-import { DeviceCommand, DeviceCommandResult, executeDeviceCommand as execCmd } from '../lib/deviceExecutor';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { BeamState, neurobeam } from '../lib/neurobeam';
 
 // ─── Types ───────────────────────────────────────────────────────
 type AgentType = 'llama3.2:3b' | 'gemma:2b' | 'mistral:latest';
@@ -19,14 +19,14 @@ interface NoosphereState {
     upstreamUrl: string | null;       // e.g. "http://192.168.1.50:8000"
     authToken: string | null;         // Bearer token from QR handshake
 
-    // Device Command Execution (via Noosphere link)
-    lastCommandResult: DeviceCommandResult | null;
-    commandHistory: DeviceCommandResult[];
-    executeDeviceCommand: (command: DeviceCommand) => Promise<DeviceCommandResult>;
-
     // Actions
     activateTether: (url: string, token: string) => void;
     disconnectTether: () => void;
+
+    // Noosphere Comm Link
+    connected: boolean;
+    logs: any[];
+    sendIntent: (intent: string) => void;
 }
 
 // ─── Context ─────────────────────────────────────────────────────
@@ -39,29 +39,58 @@ export const NoosphereProvider = ({ children }: { children: React.ReactNode }) =
     const [inferenceMode, setInferenceMode] = useState<InferenceMode>('local');
     const [upstreamUrl, setUpstreamUrl] = useState<string | null>(null);
     const [authToken, setAuthToken] = useState<string | null>(null);
-    const [lastCommandResult, setLastCommandResult] = useState<DeviceCommandResult | null>(null);
-    const commandHistoryRef = useRef<DeviceCommandResult[]>([]);
 
-    const activateTether = useCallback((url: string, token: string) => {
+    const [connected, setConnected] = useState(false);
+    const [logs, setLogs] = useState<any[]>([]);
+
+    useEffect(() => {
+        // Subscribe to neurobeam stats and incoming payloads
+        const unsubscribe = neurobeam.onUpdate((payload: any) => {
+            if (payload.state !== undefined) {
+                // It's a stats object update
+                setConnected(payload.state === BeamState.LOCKED);
+            } else {
+                // It's a custom payload (e.g., from executeDeviceCommand or PC handler)
+                setLogs((prev) => [...prev, payload]);
+            }
+        });
+        return unsubscribe;
+    }, []);
+
+    const activateTether = useCallback(async (url: string, token: string) => {
         console.log(`⚡ TETHER ACTIVATED → ${url}`);
         setUpstreamUrl(url);
         setAuthToken(token);
         setInferenceMode('tethered');
+
+        try {
+            // Assume url is of form ws://IP:PORT and token is base64 key string with sid
+            // The existing QR code format is {"host":IP, "port":PORT, "key":KEY, "sid":SID}
+            // but the NoosphereContext might just receive strings. 
+            // In a real flow, you parse the QR code.
+            const parsed = JSON.parse(token);
+            await neurobeam.connect(parsed);
+        } catch (e) {
+            console.error("Failed to lock beam:", e);
+        }
     }, []);
 
     const disconnectTether = useCallback(() => {
         console.log('🔌 TETHER DISCONNECTED → Local Mode');
+        neurobeam.disconnect();
         setUpstreamUrl(null);
         setAuthToken(null);
         setInferenceMode('local');
+        setConnected(false);
+        setLogs([]);
     }, []);
 
-    const executeDeviceCommand = useCallback(async (command: DeviceCommand): Promise<DeviceCommandResult> => {
-        console.log(`⚡ [NOOSPHERE] Executing device command: ${command.action}`);
-        const result = await execCmd(command);
-        setLastCommandResult(result);
-        commandHistoryRef.current = [...commandHistoryRef.current.slice(-49), result];
-        return result;
+    const sendIntent = useCallback((intent: string) => {
+        if (!intent.trim()) return;
+        const getTimestamp = () => new Date().toLocaleTimeString('en-GB', { hour12: false });
+        // Push optimistic log
+        setLogs(prev => [...prev, { sender: 'OPERATOR', text: intent, timestamp: getTimestamp() }]);
+        neurobeam.sendIntent(intent);
     }, []);
 
     return (
@@ -74,11 +103,11 @@ export const NoosphereProvider = ({ children }: { children: React.ReactNode }) =
                 inferenceMode,
                 upstreamUrl,
                 authToken,
-                lastCommandResult,
-                commandHistory: commandHistoryRef.current,
-                executeDeviceCommand,
                 activateTether,
                 disconnectTether,
+                connected,
+                logs,
+                sendIntent,
             }}
         >
             {children}
