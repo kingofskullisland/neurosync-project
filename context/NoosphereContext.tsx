@@ -1,4 +1,5 @@
-import React, { createContext, useCallback, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import { DeviceCommand, DeviceCommandResult, executeDeviceCommand as execCmd } from '../lib/deviceExecutor';
 
 // ─── Types ───────────────────────────────────────────────────────
 type AgentType = 'llama3.2:3b' | 'gemma:2b' | 'mistral:latest';
@@ -18,6 +19,11 @@ interface NoosphereState {
     upstreamUrl: string | null;       // e.g. "http://192.168.1.50:8000"
     authToken: string | null;         // Bearer token from QR handshake
 
+    // Device Command Execution (via Noosphere link)
+    lastCommandResult: DeviceCommandResult | null;
+    commandHistory: DeviceCommandResult[];
+    executeDeviceCommand: (command: DeviceCommand) => Promise<DeviceCommandResult>;
+
     // Actions
     activateTether: (url: string, token: string) => void;
     disconnectTether: () => void;
@@ -33,6 +39,8 @@ export const NoosphereProvider = ({ children }: { children: React.ReactNode }) =
     const [inferenceMode, setInferenceMode] = useState<InferenceMode>('local');
     const [upstreamUrl, setUpstreamUrl] = useState<string | null>(null);
     const [authToken, setAuthToken] = useState<string | null>(null);
+    const [lastCommandResult, setLastCommandResult] = useState<DeviceCommandResult | null>(null);
+    const commandHistoryRef = useRef<DeviceCommandResult[]>([]);
 
     const activateTether = useCallback((url: string, token: string) => {
         console.log(`⚡ TETHER ACTIVATED → ${url}`);
@@ -48,6 +56,14 @@ export const NoosphereProvider = ({ children }: { children: React.ReactNode }) =
         setInferenceMode('local');
     }, []);
 
+    const executeDeviceCommand = useCallback(async (command: DeviceCommand): Promise<DeviceCommandResult> => {
+        console.log(`⚡ [NOOSPHERE] Executing device command: ${command.action}`);
+        const result = await execCmd(command);
+        setLastCommandResult(result);
+        commandHistoryRef.current = [...commandHistoryRef.current.slice(-49), result];
+        return result;
+    }, []);
+
     return (
         <NoosphereContext.Provider
             value={{
@@ -58,6 +74,9 @@ export const NoosphereProvider = ({ children }: { children: React.ReactNode }) =
                 inferenceMode,
                 upstreamUrl,
                 authToken,
+                lastCommandResult,
+                commandHistory: commandHistoryRef.current,
+                executeDeviceCommand,
                 activateTether,
                 disconnectTether,
             }}
